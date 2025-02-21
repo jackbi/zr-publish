@@ -1,0 +1,19 @@
+{
+  "main": "index.html",
+  "preload": "preload/services.js",
+  "logo": "logo.png",
+  "development": {
+    "main": "http://localhost:3020"
+  },
+  "features": [
+    {
+      "code": "Home",
+      "explain": "插件首页",
+      "cmds": [
+        "zr",
+        "zrPublish",
+        "zr-publish"
+      ]
+    }
+  ]
+}

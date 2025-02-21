@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "node",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowJs": true,
+    "types": ["utools-api-types", "element-plus/global", "./src/vite-env.d.ts"],
+    "baseUrl": "./",
+    "paths": {
+      // 路径映射，相对于baseUrl
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*.vue", "src/**/*.js", "src/**/*.ts", "src/*.vue", "tailwind.config.js"]
+}
