@@ -103,12 +103,14 @@ const uploadFileToMultipleServers = async (remoteData, servers, onProcess) => {
         password: server.password,
         readyTimeout: 10000, // 连接超时
         timeout: 30000, // 操作超时
-        debug: console.log,
+        // debug: console.log,
       });
 
-      await ensureRemoteDirExists(ssh, remoteFilePath);
+      const fileName = path.basename(localFilePath);
+
+      await ensureRemoteDirExists(ssh, remoteFilePath + '/' + fileName);
       // 上传文件
-      await ssh.putFile(localFilePath, remoteFilePath).then(
+      await ssh.putFile(localFilePath, remoteFilePath + '/' + fileName).then(
         function () {
           console.log('The File thing is done');
         },

@@ -7,7 +7,7 @@
   },
   "features": [
     {
-      "code": "Home",
+      "code": "Doc",
       "explain": "插件首页",
       "cmds": [
         "zr",

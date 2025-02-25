@@ -4,7 +4,7 @@
  * @Author: wenbin
  * @Date: 2023-10-31 09:26:04
  * @LastEditors: wenbin
- * @LastEditTime: 2025-02-20 17:09:46
+ * @LastEditTime: 2025-02-25 09:44:04
  * @FilePath: /zr-publish/src/router/index.ts
  * Copyright (C) 2023 wenbin. All rights reserved.
  */
@@ -39,6 +39,15 @@ const routes = [
     children: [],
   },
   {
+    path: '/doc',
+    name: 'Doc',
+    component: () => import('@/views/Doc/index.vue'),
+    meta: {
+      title: '使用说明',
+    },
+    children: [],
+  },
+  {
     path: '/project',
     name: 'Project',
     component: () => import('@/views/Project/index.vue'),
@@ -67,7 +76,7 @@ const routes = [
   },
   {
     path: '/',
-    redirect: '/home',
+    redirect: '/doc',
   },
 ];
 

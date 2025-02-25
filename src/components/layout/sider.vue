@@ -4,7 +4,7 @@
  * @Author: wenbin
  * @Date: 2025-01-30 15:32:29
  * @LastEditors: wenbin
- * @LastEditTime: 2025-02-20 17:11:43
+ * @LastEditTime: 2025-02-25 09:45:09
  * @FilePath: /zr-publish/src/components/layout/sider.vue
  * Copyright (C) 2025 wenbin. All rights reserved.
 -->
@@ -18,6 +18,10 @@
       active-text-color="#ffd04b"
       @select="selectMenu"
     >
+      <el-menu-item index="Doc">
+        <el-icon><Document /></el-icon>
+        <span>使用说明</span>
+      </el-menu-item>
       <el-menu-item index="Home">
         <el-icon><HomeFilled /></el-icon>
         <span>首页</span>
@@ -39,7 +43,7 @@
 </template>
 
 <script lang="ts" setup>
-import { HomeFilled, Folder, Connection, MessageBox } from '@element-plus/icons-vue';
+import { HomeFilled, Folder, Connection, MessageBox, Document } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();

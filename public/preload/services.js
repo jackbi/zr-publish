@@ -4,7 +4,7 @@
  * @Author: wenbin
  * @Date: 2025-02-11 14:10:21
  * @LastEditors: wenbin
- * @LastEditTime: 2025-02-14 16:47:00
+ * @LastEditTime: 2025-02-25 10:03:56
  * @FilePath: /zr-publish/public/preload/services.js
  * Copyright (C) 2025 wenbin. All rights reserved.
  */
@@ -15,6 +15,10 @@ const { testConnect, publish } = require('./ssh');
 window.services = {
   // 读文件
   readFile(file) {
+    return fs.readFileSync(file, { encoding: 'utf-8' });
+  },
+  readDoc() {
+    const file = path.join(__dirname, 'read.md');
     return fs.readFileSync(file, { encoding: 'utf-8' });
   },
   readDir(dir) {
