@@ -18,8 +18,9 @@ const testConnect = async (datas) => {
   }
 };
 
-async function uploadViaSftp(localFolder, remoteFolder, serverConfig) {
+async function uploadViaSftp(remoteData, serverConfig, onProcess) {
   const ssh = new NodeSSH();
+  const { remote_path: remoteFolder, local_path: localFolder } = remoteData;
   try {
     // 建立连接
     await ssh.connect({
@@ -30,10 +31,23 @@ async function uploadViaSftp(localFolder, remoteFolder, serverConfig) {
       readyTimeout: 10000,
     });
 
-    // 删除远程文件夹
-    const deleteResult = await ssh.execCommand(`rm -rf ${remoteFolder}`);
-    if (deleteResult.stderr) {
-      throw new Error(`Delete failed: ${deleteResult.stderr}`);
+    if (remoteData.is_save || remoteData.is_save == undefined) {
+      const saveResult = await ssh.execCommand(
+        `zip -r ${remoteFolder}_backup_${new Date().getTime()}.zip ${remoteFolder}`,
+      );
+      if (saveResult.stderr) {
+        onProcess(`Saved failed: ${saveResult.stderr}`);
+        throw new Error(`Saved failed: ${saveResult.stderr}`);
+      }
+    }
+
+    if (remoteData.is_removed || remoteData.is_removed == undefined) {
+      // 删除远程文件夹
+      const deleteResult = await ssh.execCommand(`rm -rf ${remoteFolder}`);
+      if (deleteResult.stderr) {
+        onProcess(`Delete failed: ${deleteResult.stderr}`);
+        throw new Error(`Delete failed: ${deleteResult.stderr}`);
+      }
     }
 
     // 上传文件夹
@@ -42,9 +56,9 @@ async function uploadViaSftp(localFolder, remoteFolder, serverConfig) {
       recursive: true,
       tick: (localPath, remotePath, error) => {
         if (error) {
-          console.error(`Upload failed: ${localPath} -> ${remotePath}`, error);
+          onProcess(`Upload failed: ${localPath} -> ${remotePath}`, error);
         } else {
-          console.log(`Uploaded: ${localPath} -> ${remotePath}`);
+          onProcess(`Uploaded: ${localPath} -> ${remotePath}`);
         }
       },
     });
@@ -63,7 +77,7 @@ const uploadToMultipleServers = async (remoteData, servers, onProcess) => {
   const uploadPromises = servers.map(async (server) => {
     onProcess(`Uploading to server: ${server.host}`);
     try {
-      await uploadViaSftp(remoteData.local_path, remoteData.remote_path, server);
+      await uploadViaSftp(remoteData, server, onProcess);
       onProcess(`Successfully uploaded to server: ${server.host}`);
       return { host: server.host, success: true };
     } catch (err) {

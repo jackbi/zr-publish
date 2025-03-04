@@ -4,7 +4,7 @@
  * @Author: wenbin
  * @Date: 2023-10-31 09:26:04
  * @LastEditors: wenbin
- * @LastEditTime: 2025-02-25 09:44:04
+ * @LastEditTime: 2025-03-03 17:31:17
  * @FilePath: /zr-publish/src/router/index.ts
  * Copyright (C) 2023 wenbin. All rights reserved.
  */
@@ -71,6 +71,15 @@ const routes = [
     component: () => import('@/views/Command/index.vue'),
     meta: {
       title: '指令管理',
+    },
+    children: [],
+  },
+  {
+    path: '/remote',
+    name: 'Remote',
+    component: () => import('@/views/Remote/index.vue'),
+    meta: {
+      title: '远程路径',
     },
     children: [],
   },

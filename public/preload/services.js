@@ -4,7 +4,7 @@
  * @Author: wenbin
  * @Date: 2025-02-11 14:10:21
  * @LastEditors: wenbin
- * @LastEditTime: 2025-02-25 10:03:56
+ * @LastEditTime: 2025-03-03 17:09:07
  * @FilePath: /zr-publish/public/preload/services.js
  * Copyright (C) 2025 wenbin. All rights reserved.
  */
@@ -23,6 +23,10 @@ window.services = {
   },
   readDir(dir) {
     return fs.readdirSync(dir);
+  },
+
+  isDir(path) {
+    return fs.statSync(path).isDirectory();
   },
   // 文本写入到下载目录
   writeTextFile(text) {

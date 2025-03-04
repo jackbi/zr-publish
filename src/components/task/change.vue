@@ -38,8 +38,43 @@
         </el-select>
       </el-form-item>
       <el-form-item label="目标路径" prop="remote_path">
-        <el-input v-model="formData.remote_path" placeholder="请输入目标路径" />
+        <!-- <el-input v-model="formData.remote_path" placeholder="请输入目标路径" /> -->
+        <el-select
+          v-model="formData.remote_path"
+          filterable
+          clearable
+          allow-create
+          :reserve-keyword="false"
+          placeholder="请输入目标路径"
+        >
+          <el-option v-for="item in remoteList" :key="item" :label="item" :value="item" />
+        </el-select>
       </el-form-item>
+      <template v-if="isDir">
+        <el-form-item label="是否删除远程数据" prop="is_removed">
+          <el-switch
+            v-model="formData.is_removed"
+            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+            :active-value="true"
+            :inactive-value="false"
+          />
+          <el-tooltip content="开启会先把远程文件夹删除" placement="bottom">
+            <el-button type="primary" text :icon="InfoFilled"></el-button>
+          </el-tooltip>
+        </el-form-item>
+        <el-form-item label="是否备份远程数据" prop="is_save">
+          <el-switch
+            v-model="formData.is_save"
+            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+            :active-value="true"
+            :inactive-value="false"
+          />
+          <el-tooltip content="开启会先把远程文件夹使用zip打包" placement="bottom">
+            <el-button type="primary" text :icon="InfoFilled"></el-button>
+          </el-tooltip>
+        </el-form-item>
+      </template>
+
       <el-form-item label="上传后执行命令" prop="remote_command">
         <!-- <el-input v-model="formData.remote_command" placeholder="请输入上传后执行命令" /> -->
         <el-select
@@ -65,10 +100,17 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { TaskItemType, TaskItemTypeNoId, ProjectItemType, sshItemType } from '@/types/index.type';
-import { FolderOpened } from '@element-plus/icons-vue';
-import { getProjectList, getSshList, addTask, updateTask, getCommandList } from '@/DB/index.db';
+import { FolderOpened, InfoFilled } from '@element-plus/icons-vue';
+import {
+  getProjectList,
+  getSshList,
+  addTask,
+  updateTask,
+  getCommandList,
+  getRemoteList,
+} from '@/DB/index.db';
 import { decrypt } from '@/utils/CryptoJS';
 import { ElMessage } from 'element-plus';
 import { cloneDeep } from 'lodash-es';
@@ -78,6 +120,7 @@ const dialogVisible = ref(false);
 const projectList = ref<ProjectItemType[]>([]);
 const sshList = ref<sshItemType[]>([]);
 const commandList = ref<string[]>([]);
+const remoteList = ref<string[]>([]);
 const packageScripts = ref<string[]>([]);
 const id = ref();
 const emit = defineEmits(['success']);
@@ -94,6 +137,8 @@ const formData = reactive<TaskItemTypeNoId>({
   remote_command: '',
   local_command: '',
   desc: '',
+  is_removed: true,
+  is_save: true,
 });
 
 const formRules = reactive({
@@ -134,6 +179,10 @@ const formRules = reactive({
   ],
 });
 
+const isDir = computed(() => {
+  return (window as any).services.isDir(formData.local_path);
+});
+
 const cancel = () => {
   dialogVisible.value = false;
   id.value = undefined;
@@ -147,6 +196,8 @@ const cancel = () => {
   formData.local_path = '';
   formData.remote_command = '';
   formData.local_command = '';
+  formData.is_removed = true;
+  formData.is_save = true;
 };
 
 const handleSelectPath = () => {
@@ -177,6 +228,11 @@ const getCommandListData = () => {
     commandList.value = res;
   });
 };
+const getRemoteListData = () => {
+  getRemoteList().then((res) => {
+    remoteList.value = res;
+  });
+};
 const getSshListData = () => {
   getSshList().then((res) => {
     sshList.value = res.map((el) => {
@@ -196,6 +252,7 @@ const init = (datas: TaskItemType) => {
   getProjectListData();
   getSshListData();
   getCommandListData();
+  getRemoteListData();
   dialogVisible.value = true;
 };
 

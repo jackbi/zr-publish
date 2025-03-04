@@ -4,7 +4,7 @@
  * @Author: wenbin
  * @Date: 2025-01-30 15:32:29
  * @LastEditors: wenbin
- * @LastEditTime: 2025-02-25 09:45:09
+ * @LastEditTime: 2025-03-03 17:30:48
  * @FilePath: /zr-publish/src/components/layout/sider.vue
  * Copyright (C) 2025 wenbin. All rights reserved.
 -->
@@ -38,12 +38,16 @@
         <el-icon><MessageBox /></el-icon>
         <span>指令管理</span>
       </el-menu-item>
+      <el-menu-item index="Remote">
+        <el-icon><Box /></el-icon>
+        <span>远程目录</span>
+      </el-menu-item>
     </el-menu>
   </el-scrollbar>
 </template>
 
 <script lang="ts" setup>
-import { HomeFilled, Folder, Connection, MessageBox, Document } from '@element-plus/icons-vue';
+import { HomeFilled, Folder, Connection, MessageBox, Document, Box } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
