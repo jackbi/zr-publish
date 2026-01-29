@@ -180,6 +180,9 @@ const formRules = reactive({
 });
 
 const isDir = computed(() => {
+  if (!formData.local_path) {
+    return false;
+  }
   return (window as any).services.isDir(formData.local_path);
 });
 
