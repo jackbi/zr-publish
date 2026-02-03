@@ -34,6 +34,9 @@
         <el-icon><Operation /></el-icon>
       </button>
       <div class="fab-menu__items">
+        <button class="fab-menu__item" type="button" @click="goToDoc" title="使用文档">
+          <el-icon><Document /></el-icon>
+        </button>
         <button class="fab-menu__item" type="button" @click="goToSettings" title="设置">
           <el-icon><Setting /></el-icon>
         </button>
@@ -48,7 +51,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Operation, Setting, Refresh } from '@element-plus/icons-vue';
+import { Operation, Setting, Refresh, Document } from '@element-plus/icons-vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -77,6 +80,11 @@ const fabMenuRef = ref<HTMLElement | null>(null);
 
 const toggleFab = () => {
   fabOpen.value = !fabOpen.value;
+};
+
+const goToDoc = () => {
+  fabOpen.value = false;
+  router.push({ name: 'Doc' });
 };
 
 const goToSettings = () => {

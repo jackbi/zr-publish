@@ -84,6 +84,15 @@ const routes = [
     children: [],
   },
   {
+    path: '/doc',
+    name: 'Doc',
+    component: () => import('@/views/Doc/index.vue'),
+    meta: {
+      title: '使用文档',
+    },
+    children: [],
+  },
+  {
     path: '/settings',
     name: 'Settings',
     component: () => import('@/views/Settings/index.vue'),
