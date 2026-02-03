@@ -8,6 +8,9 @@
  * @FilePath: /zr-publish/src/types/ssh.type.ts
  * Copyright (C) 2025 wenbin. All rights reserved.
  */
+
+export type SSHAuthType = 'password' | 'privateKey';
+
 export interface sshItemType {
   id: string;
   name: string;
@@ -15,6 +18,10 @@ export interface sshItemType {
   port: number;
   username: string;
   password: string;
+  auth_type?: SSHAuthType; // 认证方式: 'password' | 'privateKey'
+  private_key?: string; // 私钥文件路径
+  passphrase?: string; // 私钥密码（如果有）
+  desc?: string; // 描述备注
 }
 
 export interface sshItemTypeNoId extends Omit<sshItemType, 'id'> {

@@ -2,17 +2,99 @@ const { NodeSSH } = require('node-ssh');
 const fs = require('fs');
 const path = require('path');
 
+let publishBusy = false;
+const connectionPool = new Map();
+
+const buildSSHConfig = (serverConfig) => {
+  const config = {
+    host: serverConfig.host,
+    port: serverConfig.port,
+    username: serverConfig.username,
+    readyTimeout: 10000,
+  };
+
+  if (serverConfig.auth_type === 'privateKey' && serverConfig.private_key) {
+    try {
+      config.privateKey = fs.readFileSync(serverConfig.private_key, 'utf8');
+      if (serverConfig.passphrase) {
+        config.passphrase = serverConfig.passphrase;
+      }
+    } catch (error) {
+      throw new Error(`Failed to read private key file: ${error.message}`);
+    }
+  } else {
+    config.password = serverConfig.password;
+  }
+
+  return config;
+};
+
+const getPooledConnection = async (serverConfig) => {
+  const key = `${serverConfig.host}:${serverConfig.port}:${serverConfig.username}`;
+  
+  if (connectionPool.has(key)) {
+    const pooled = connectionPool.get(key);
+    if (pooled.ssh && pooled.ssh.connection && pooled.ssh.connection.state === 'authenticated') {
+      pooled.lastUsed = Date.now();
+      return { ssh: pooled.ssh, fromPool: true };
+    } else {
+      connectionPool.delete(key);
+    }
+  }
+
+  const ssh = new NodeSSH();
+  const config = buildSSHConfig(serverConfig);
+  await ssh.connect(config);
+  
+  connectionPool.set(key, {
+    ssh,
+    lastUsed: Date.now(),
+    serverConfig,
+  });
+
+  return { ssh, fromPool: false };
+};
+
+const releaseConnection = (serverConfig, dispose = false) => {
+  const key = `${serverConfig.host}:${serverConfig.port}:${serverConfig.username}`;
+  const pooled = connectionPool.get(key);
+  
+  if (pooled) {
+    if (dispose) {
+      pooled.ssh.dispose();
+      connectionPool.delete(key);
+    }
+  }
+};
+
+const cleanupIdleConnections = (maxIdleTime = 300000) => {
+  const now = Date.now();
+  for (const [key, pooled] of connectionPool.entries()) {
+    if (now - pooled.lastUsed > maxIdleTime) {
+      pooled.ssh.dispose();
+      connectionPool.delete(key);
+    }
+  }
+};
+
+setInterval(() => cleanupIdleConnections(), 60000);
+
 const testConnect = async (datas) => {
   const ssh = new NodeSSH();
   try {
-    await ssh.connect({
-      host: datas.host,
-      port: datas.port,
-      username: datas.username,
-      password: datas.password,
-      readyTimeout: 10000,
-    });
-    return true;
+    const config = buildSSHConfig(datas);
+    await ssh.connect(config);
+    return { 
+      success: true, 
+      message: '连接成功',
+      authType: datas.auth_type || 'password',
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `连接失败: ${error.message}`,
+      error: error.toString(),
+    };
   } finally {
     ssh.dispose();
   }
@@ -22,16 +104,10 @@ async function uploadViaSftp(remoteData, serverConfig, onProcess) {
   const ssh = new NodeSSH();
   const { remote_path: remoteFolder, local_path: localFolder } = remoteData;
   try {
-    // 建立连接
-    await ssh.connect({
-      host: serverConfig.host,
-      port: serverConfig.port,
-      username: serverConfig.username,
-      password: serverConfig.password,
-      readyTimeout: 10000,
-    });
+    const config = buildSSHConfig(serverConfig);
+    await ssh.connect(config);
 
-    if (remoteData.is_save || remoteData.is_save == undefined) {
+    if (remoteData.is_save || remoteData.is_save === undefined) {
       const saveResult = await ssh.execCommand(
         `zip -r ${remoteFolder}_backup_${new Date().getTime()}.zip ${remoteFolder}`,
       );
@@ -41,18 +117,44 @@ async function uploadViaSftp(remoteData, serverConfig, onProcess) {
       }
     }
 
-    if (remoteData.is_removed || remoteData.is_removed == undefined) {
-      // 删除远程文件夹
+    if (remoteData.is_removed || remoteData.is_removed === undefined) {
+      const excludePaths = remoteData.exclude_paths || [];
+      const tempDir = `/tmp/zr_publish_temp_${new Date().getTime()}`;
+      
+      if (excludePaths.length > 0) {
+        await ssh.execCommand(`mkdir -p ${tempDir}`);
+        
+        for (const excludePath of excludePaths) {
+          const sourcePath = `${remoteFolder}/${excludePath}`;
+          const moveResult = await ssh.execCommand(`mv ${sourcePath} ${tempDir}/`);
+          if (moveResult.code !== 0) {
+            onProcess(`Warning: Failed to preserve ${excludePath}: ${moveResult.stderr}`);
+          } else {
+            onProcess(`Preserved: ${excludePath}`);
+          }
+        }
+      }
+      
       const deleteResult = await ssh.execCommand(`rm -rf ${remoteFolder}`);
       if (deleteResult.stderr) {
         onProcess(`Delete failed: ${deleteResult.stderr}`);
         throw new Error(`Delete failed: ${deleteResult.stderr}`);
       }
+      
+      if (excludePaths.length > 0) {
+        await ssh.execCommand(`mkdir -p ${remoteFolder}`);
+        
+        const restoreResult = await ssh.execCommand(`mv ${tempDir}/* ${remoteFolder}/`);
+        if (restoreResult.code === 0) {
+          onProcess(`Restored excluded files/folders`);
+        }
+        
+        await ssh.execCommand(`rm -rf ${tempDir}`);
+      }
     }
 
-    // 上传文件夹
     const transferResult = await ssh.putDirectory(localFolder, remoteFolder, {
-      concurrency: 5, // 控制并发数
+      concurrency: 5,
       recursive: true,
       tick: (localPath, remotePath, error) => {
         if (error) {
@@ -101,29 +203,20 @@ const ensureRemoteDirExists = async (ssh, remotePath) => {
   }
 };
 
-// 上传文件到多个服务器
 const uploadFileToMultipleServers = async (remoteData, servers, onProcess) => {
   const localFilePath = remoteData.local_path;
   const remoteFilePath = remoteData.remote_path;
-  const ssh = new NodeSSH();
 
   for (const server of servers) {
+    const ssh = new NodeSSH();
     try {
-      // 连接服务器
-      await ssh.connect({
-        host: server.host,
-        port: server.port,
-        username: server.username,
-        password: server.password,
-        readyTimeout: 10000, // 连接超时
-        timeout: 30000, // 操作超时
-        // debug: console.log,
-      });
+      const config = buildSSHConfig(server);
+      await ssh.connect(config);
 
       const fileName = path.basename(localFilePath);
 
       await ensureRemoteDirExists(ssh, remoteFilePath + '/' + fileName);
-      // 上传文件
+      
       await ssh.putFile(localFilePath, remoteFilePath + '/' + fileName).then(
         function () {
           console.log('The File thing is done');
@@ -135,7 +228,6 @@ const uploadFileToMultipleServers = async (remoteData, servers, onProcess) => {
       );
       onProcess(`File uploaded to server ${server.host}`);
 
-      // 检查是否有自定义指令
       if (remoteData.remote_command) {
         const result = await ssh.execCommand(remoteData.remote_command);
         if (result.stderr) {
@@ -147,29 +239,93 @@ const uploadFileToMultipleServers = async (remoteData, servers, onProcess) => {
         }
       }
 
-      ssh.dispose();
     } catch (err) {
       onProcess(`Failed to upload file to server ${server.host}: ${err.message}`);
       throw err;
+    } finally {
+      ssh.dispose();
     }
   }
 };
 
 const publish = async ({ serverData, remoteData, onProcess }) => {
+  if (publishBusy) {
+    throw new Error('Publish in progress');
+  }
+  publishBusy = true;
   try {
     const isFolder = fs.statSync(remoteData.local_path).isDirectory();
     if (isFolder) {
-      uploadToMultipleServers(remoteData, serverData, onProcess);
+      await uploadToMultipleServers(remoteData, serverData, onProcess);
     } else {
-      uploadFileToMultipleServers(remoteData, serverData, onProcess);
+      await uploadFileToMultipleServers(remoteData, serverData, onProcess);
     }
   } catch (error) {
     onProcess(`发布失败: ${error.message}`);
     throw error;
+  } finally {
+    publishBusy = false;
+  }
+};
+
+const listRemoteDirectory = async (serverConfig, remotePath) => {
+  const ssh = new NodeSSH();
+  try {
+    const config = buildSSHConfig(serverConfig);
+    await ssh.connect(config);
+
+    const result = await ssh.execCommand(`ls -F ${remotePath}`);
+    
+    if (result.code !== 0) {
+      throw new Error(`Failed to list directory: ${result.stderr || 'Directory not found'}`);
+    }
+
+    const items = result.stdout.split('\n').filter(item => item.trim());
+    
+    return items.map(item => {
+      const isDirectory = item.endsWith('/');
+      const name = isDirectory ? item.slice(0, -1) : item.replace(/[*@|=]$/, '');
+      return {
+        name,
+        isDirectory,
+      };
+    });
+  } catch (error) {
+    throw new Error(`Failed to connect or list directory: ${error.message}`);
+  } finally {
+    ssh.dispose();
+  }
+};
+
+const executeRemoteCommand = async (serverConfig, command) => {
+  const ssh = new NodeSSH();
+  try {
+    const config = buildSSHConfig(serverConfig);
+    await ssh.connect(config);
+
+    const result = await ssh.execCommand(command);
+    
+    return {
+      success: result.code === 0,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      code: result.code,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+    };
+  } finally {
+    ssh.dispose();
   }
 };
 
 module.exports = {
   testConnect,
   publish,
+  listRemoteDirectory,
+  executeRemoteCommand,
+  getPooledConnection,
+  releaseConnection,
 };

@@ -10,6 +10,7 @@
 -->
 <template>
   <el-dialog
+    modal-class="current-dialog"
     v-model="dialogVisible"
     :title="id ? '编辑远程路径' : '新增远程路径'"
     width="60%"
@@ -28,52 +29,65 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="cancel">取消</el-button>
-      <el-button @click="confirm" type="primary">确定</el-button>
+      <div class="dialog-footer">
+        <el-button @click="cancel">取消</el-button>
+        <el-button @click="confirm" type="primary">确定</el-button>
+      </div>
     </template>
   </el-dialog>
 </template>
 
 <script lang="ts" setup>
 import { reactive, ref } from 'vue';
-import { addRemote } from '@/DB/index.db';
-import { ElMessage } from 'element-plus';
+import { addRemote, updateRemote } from '@/DB/index.db';
+import { notifyError, notifySuccess } from '@/utils/feedback';
+import { useDialogForm } from '@/utils/dialog';
 
-const dialogVisible = ref(false);
-
-const id = ref();
+const { dialogVisible, id, formData, resetDialog, openDialog } = useDialogForm<{ content: string }>(
+  () => ({
+    content: '',
+  }),
+);
 const emit = defineEmits(['success']);
 
 const formRef = ref();
-const formData = reactive<{ content: string }>({
-  content: '',
-});
 
 const formRules = reactive({
   content: [{ required: true, message: '请输入内容', trigger: 'blur' }],
 });
 
 const cancel = () => {
-  dialogVisible.value = false;
-  id.value = undefined;
-  formData.content = '';
+  resetDialog();
 };
 
 const init = (datas: string) => {
-  if (datas) {
-    formData.content = datas;
-  }
-  dialogVisible.value = true;
+  openDialog(datas ? { content: datas } : undefined);
 };
 
 const confirm = () => {
   formRef.value.validate((valid: boolean) => {
     if (valid) {
-      addRemote(formData.content).then((res) => {
-        emit('success', res);
-        cancel();
-        ElMessage.success('操作成功');
-      });
+      if (id.value) {
+        updateRemote(id.value, formData.content)
+          .then(() => {
+            emit('success', formData.content);
+            cancel();
+            notifySuccess();
+          })
+          .catch(() => {
+            notifyError();
+          });
+        return;
+      }
+      addRemote(formData.content)
+        .then((res) => {
+          emit('success', res);
+          cancel();
+          notifySuccess();
+        })
+        .catch(() => {
+          notifyError();
+        });
     }
   });
 };

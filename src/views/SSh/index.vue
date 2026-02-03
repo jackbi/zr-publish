@@ -1,41 +1,72 @@
 <template>
-  <el-card style="width: 100%; height: 100%" body-class="w-full h-[calc(100%-51px)] box-border">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div class="text-[#333] text-[16px]">SSH管理</div>
-        <div class="flex items-center">
-          <el-button @click="addProjectItem" type="primary">新增SSH链接</el-button>
-          <el-input
-            class="w-[200px] ml-[15px]"
-            type="text"
-            v-model="search"
-            placeholder="请输入名称或ip"
-          ></el-input>
-        </div>
+  <div class="page-stack">
+    <header class="page-header page-header--sticky">
+      <div class="page-title">SSH 管理</div>
+      <div class="page-actions page-actions--inline">
+        <el-input
+          class="search-input w-[220px]"
+          type="text"
+          v-model="searchInput"
+          placeholder="搜索名称/IP"
+          clearable
+          :prefix-icon="Search"
+          @keyup.enter="triggerSearch"
+          @input="triggerSearch"
+          @clear="triggerSearch"
+        ></el-input>
+        <el-button @click="addProjectItem" type="primary">新增 SSH</el-button>
       </div>
-    </template>
-    <div class="w-full h-full">
-      <el-table :data="filterTableData" style="width: 100%" border script height="100%">
+    </header>
+    <div class="page-content">
+      <el-table :data="filterTableData" style="width: 100%" border height="100%">
         <el-table-column prop="name" label="名称" min-width="120" />
         <el-table-column prop="host" label="ip地址" min-width="120" />
         <el-table-column prop="port" label="端口" width="80" />
-        <el-table-column prop="username" label="用户名" width="80" />
-        <el-table-column label="操作" fixed="right" width="100">
+        <el-table-column prop="username" label="用户名" width="100" />
+        <el-table-column label="认证方式" width="100">
           <template #default="{ row }">
+            <el-tag :type="row.auth_type === 'privateKey' ? 'success' : 'primary'" size="small">
+              {{ row.auth_type === 'privateKey' ? '密钥' : '密码' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="desc" label="描述" min-width="120" show-overflow-tooltip />
+        <el-table-column label="操作" fixed="right" width="150">
+          <template #default="{ row }">
+            <el-button
+              text
+              type="primary"
+              style="padding: 0"
+              :icon="Monitor"
+              size="default"
+              title="打开终端"
+              @click="handleOpenTerminal(row)"
+            ></el-button>
             <el-button
               text
               type="primary"
               style="padding: 0"
               :icon="Edit"
               size="default"
+              title="编辑"
               @click="handleEdit(row)"
             ></el-button>
             <el-button
               text
               type="primary"
               style="padding: 0"
+              :icon="DocumentCopy"
+              size="default"
+              title="复制"
+              @click="handleCopy(row)"
+            ></el-button>
+            <el-button
+              text
+              type="primary"
+              style="padding: 0"
               :icon="Connection"
-              :loading="connectLoading"
+              title="测试连接"
+              :loading="connectLoading[row.id]"
               @click="handleConnect(row)"
             ></el-button>
             <el-button
@@ -44,6 +75,7 @@
               style="padding: 0"
               :icon="Delete"
               size="default"
+              title="删除"
               @click="handleDelete(row)"
             ></el-button>
           </template>
@@ -51,23 +83,55 @@
       </el-table>
       <sshChange ref="sshChangeRef" @success="getTableData"></sshChange>
     </div>
-  </el-card>
+
+    <el-dialog v-model="testResultVisible" title="连接测试结果" width="500px" draggable>
+      <div class="test-result">
+        <el-result :icon="testResult.success ? 'success' : 'error'" :title="testResult.message">
+          <template #extra>
+            <div v-if="testResult.authType" class="test-detail">
+              <p>
+                <strong>认证方式:</strong>
+                {{ testResult.authType === 'privateKey' ? '私钥认证' : '密码认证' }}
+              </p>
+            </div>
+            <div v-if="testResult.error" class="test-error">
+              <el-alert type="error" :closable="false" show-icon>
+                <template #title>错误详情</template>
+                <pre style="margin: 8px 0 0 0; font-size: 12px">{{ testResult.error }}</pre>
+              </el-alert>
+            </div>
+          </template>
+        </el-result>
+      </div>
+      <template #footer>
+        <el-button @click="testResultVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { Delete, Edit, Connection } from '@element-plus/icons-vue';
-import { getSshList, removeSsh } from '@/DB/index.db';
+import { Delete, Edit, Connection, Search, DocumentCopy, Monitor } from '@element-plus/icons-vue';
+import { getSshList, removeSsh, addSsh, getSettings } from '@/DB/index.db';
 import { sshItemType } from '@/types/index.type';
-import { computed, defineAsyncComponent, ref } from 'vue';
-import { ElMessageBox, ElMessage } from 'element-plus';
+import { computed, defineAsyncComponent, ref, watch, reactive } from 'vue';
+import { createDebounce } from '@/utils/timing';
+import { notifyError, notifySuccess, confirmDelete } from '@/utils/feedback';
+import { safeTestConnect } from '@/utils/utools';
 import { decrypt } from '@/utils/CryptoJS';
 import { cloneDeep } from 'lodash-es';
 
 const sshChange = defineAsyncComponent(() => import('@/components/ssh/change.vue'));
 const sshData = ref<sshItemType[]>([]);
 const sshChangeRef = ref();
+const searchInput = ref('');
 const search = ref('');
-const connectLoading = ref(false);
+const connectLoading = reactive<Record<string, boolean>>({});
+const testResultVisible = ref(false);
+const testResult = ref<{ success: boolean; message: string; authType?: string; error?: string }>({
+  success: false,
+  message: '',
+});
 
 const filterTableData = computed(() =>
   sshData.value.filter(
@@ -78,9 +142,23 @@ const filterTableData = computed(() =>
   ),
 );
 
+const debounceSearch = createDebounce(300);
+const triggerSearch = () => {
+  debounceSearch(() => {
+    search.value = searchInput.value.trim();
+  });
+};
+
+watch(searchInput, () => {
+  triggerSearch();
+});
+
 const getTableData = () => {
   getSshList().then((res) => {
-    sshData.value = res;
+    sshData.value = res.map((item) => ({
+      ...item,
+      auth_type: item.auth_type || 'password',
+    }));
   });
 };
 
@@ -90,43 +168,128 @@ const addProjectItem = () => {
 
 const handleEdit = (row: sshItemType) => {
   const params = cloneDeep(row);
-  params.password = decrypt(params.password);
+  if (params.auth_type === 'password') {
+    params.password = decrypt(params.password);
+  }
+  if (params.passphrase) {
+    params.passphrase = decrypt(params.passphrase);
+  }
   sshChangeRef.value.init(params);
 };
 
-const handleConnect = (row: sshItemType) => {
-  connectLoading.value = true;
+const handleCopy = (row: sshItemType) => {
   const params = cloneDeep(row);
-  params.password = decrypt(params.password);
-  (window as any).services
-    .testConnect(params)
-    .then(() => {
-      ElMessage.success('连接成功');
-    })
-    .catch(() => {
-      ElMessage.error('连接失败');
-    })
-    .finally(() => {
-      connectLoading.value = false;
-    });
+  if (params.auth_type === 'password') {
+    params.password = decrypt(params.password);
+  }
+  if (params.passphrase) {
+    params.passphrase = decrypt(params.passphrase);
+  }
+  addSsh({
+    ...(params as sshItemType),
+    id: '',
+    name: `${row.name} 副本`,
+  }).then(() => {
+    getTableData();
+  });
+};
+
+const handleConnect = async (row: sshItemType) => {
+  connectLoading[row.id] = true;
+  const params = cloneDeep(row);
+
+  if (params.auth_type === 'password') {
+    params.password = decrypt(params.password);
+  }
+  if (params.passphrase) {
+    params.passphrase = decrypt(params.passphrase);
+  }
+
+  try {
+    const result = await safeTestConnect(params);
+    testResult.value = result;
+    testResultVisible.value = true;
+
+    if (result.success) {
+      notifySuccess(result.message);
+    } else {
+      notifyError(result.message);
+    }
+  } catch (error: any) {
+    testResult.value = {
+      success: false,
+      message: '连接失败',
+      error: error.toString(),
+    };
+    testResultVisible.value = true;
+    notifyError('连接失败');
+  } finally {
+    connectLoading[row.id] = false;
+  }
+};
+
+const handleOpenTerminal = async (row: sshItemType) => {
+  const params = cloneDeep(row);
+
+  if (params.auth_type === 'password') {
+    params.password = decrypt(params.password);
+  }
+  if (params.passphrase) {
+    params.passphrase = decrypt(params.passphrase);
+  }
+
+  try {
+    const settings = await getSettings();
+    let terminalType = settings.default_terminal;
+    
+    if (!terminalType && window.services?.getDefaultTerminal) {
+      terminalType = await window.services.getDefaultTerminal();
+    }
+    
+    if (window.services?.openSSHTerminal) {
+      const result = window.services.openSSHTerminal(params, terminalType);
+      if (result.success) {
+        notifySuccess('终端已打开');
+      } else {
+        notifyError(`打开终端失败: ${result.error || '未知错误'}`);
+      }
+    } else {
+      notifyError('终端功能不可用');
+    }
+  } catch (error: any) {
+    notifyError(`打开终端失败: ${error.message}`);
+  }
 };
 
 const handleDelete = (row: sshItemType) => {
-  ElMessageBox.confirm('确定要删除吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  })
+  confirmDelete(`确定要删除服务器「${row.host}」吗？`)
     .then(() => {
       removeSsh(row.id).then(() => {
         getTableData();
       });
     })
-    .catch(() => {
-      // 取消操作
-    });
+    .catch(() => {});
 };
 
 getTableData();
 </script>
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.test-result {
+  .test-detail {
+    margin-top: 16px;
+    padding: 12px;
+    background: #f5f7fa;
+    border-radius: 4px;
+
+    p {
+      margin: 4px 0;
+      font-size: 14px;
+      color: #606266;
+    }
+  }
+
+  .test-error {
+    margin-top: 16px;
+  }
+}
+</style>

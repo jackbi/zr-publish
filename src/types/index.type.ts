@@ -30,3 +30,5 @@ export interface treeItemType {
 export * from './project.type';
 export * from './ssh.type';
 export * from './task.type';
+export * from './task-group.type';
+export * from './settings.type';

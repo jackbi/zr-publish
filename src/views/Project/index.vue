@@ -4,36 +4,124 @@
  * @Author: wenbin
  * @Date: 2025-02-12 11:13:03
  * @LastEditors: wenbin
- * @LastEditTime: 2025-02-20 15:31:49
+ * @LastEditTime: 2026-02-03 16:14:46
  * @FilePath: /zr-publish/src/views/Project/index.vue
  * Copyright (C) 2025 wenbin. All rights reserved.
 -->
 <template>
-  <el-card style="width: 100%; height: 100%" body-class="w-full h-[calc(100%-51px)] box-border">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div class="text-[#333] text-[16px]">项目管理</div>
-        <div class="flex items-center">
-          <el-button @click="addProjectItem" type="primary">新增项目</el-button>
-          <el-button @click="importProject" type="primary">导入项目</el-button>
-          <el-input
-            class="w-[200px] ml-[15px]"
-            type="text"
-            v-model="search"
-            placeholder="请输入项目名称或备注"
-          ></el-input>
-        </div>
+  <div class="page-stack">
+    <header class="page-header page-header--sticky">
+      <div class="page-title">项目管理</div>
+      <div class="page-actions page-actions--inline">
+        <el-input
+          class="search-input w-[220px]"
+          type="text"
+          v-model="searchInput"
+          placeholder="搜索项目名称/备注"
+          clearable
+          :prefix-icon="Search"
+          @keyup.enter="triggerSearch"
+          @input="triggerSearch"
+          @clear="triggerSearch"
+        ></el-input>
+        <el-button @click="refreshAllGit" type="success" :icon="Refresh" :loading="refreshingAll">
+          刷新所有 Git 状态
+        </el-button>
+        <el-button @click="importProject" type="primary">导入项目</el-button>
+        <el-button @click="addProjectItem" type="primary">新增项目</el-button>
       </div>
-    </template>
-    <div class="w-full h-full">
-      <el-table :data="filterTableData" style="width: 100%" border script height="100%">
+    </header>
+    <div class="page-content">
+      <el-table :data="filterTableData" style="width: 100%" border height="100%">
         <el-table-column prop="name" label="项目名称" min-width="120" />
         <el-table-column prop="path" show-overflow-tooltip label="项目路径" min-width="120" />
-        <el-table-column prop="package_name" label="打包后文件名" width="120" />
+        <el-table-column label="项目类型" width="100">
+          <template #default="{ row }">
+            <el-tag
+              :color="getProjectTypeColor(row.project_type)"
+              style="border: none; color: white"
+              size="small"
+            >
+              {{ getProjectTypeLabel(row.project_type) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="Git 分支" width="180" show-overflow-tooltip>
+          <template #default="{ row }">
+            <div v-if="row.git_loading" class="git-loading">
+              <el-skeleton :rows="1" animated />
+            </div>
+            <div
+              v-else-if="row.git_info?.isGit"
+              class="git-info"
+              style="display: flex; align-items: center; gap: 4px"
+            >
+              <el-icon style="margin-right: 4px"><BranchesOutlined /></el-icon>
+              <span>{{ row.git_info.branch || '-' }}</span>
+              <el-tooltip
+                v-if="row.uncommitted_count > 0"
+                effect="dark"
+                :content="`${row.uncommitted_count} 个未提交的更改`"
+                placement="top"
+              >
+                <el-icon style="color: #e6a23c; margin-left: 4px"><WarningFilled /></el-icon>
+              </el-tooltip>
+            </div>
+            <span v-else style="color: #909399">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="代码状态" width="120">
+          <template #default="{ row }">
+            <div v-if="row.git_loading" class="git-loading">
+              <el-skeleton :rows="1" animated />
+            </div>
+            <el-tag
+              v-else-if="row.git_info?.isGit"
+              :type="getGitStatusType(row.git_info.status)"
+              size="small"
+              effect="plain"
+            >
+              {{ getGitStatusText(row.git_info) }}
+            </el-tag>
+            <span v-else style="color: #909399">-</span>
+          </template>
+        </el-table-column>
+        <!-- <el-table-column prop="package_name" label="打包后文件名" width="120" /> -->
         <el-table-column prop="version" label="项目版本" width="100" />
         <el-table-column prop="desc" label="备注" min-width="100" />
-        <el-table-column label="操作" fixed="right" width="100">
+        <el-table-column label="操作" fixed="right" width="120">
           <template #default="{ row }">
+            <el-dropdown trigger="click" @command="(cmd) => handleOpenCommand(cmd, row)">
+              <el-button
+                text
+                type="primary"
+                style="padding: 0"
+                :icon="FolderOpened"
+                size="default"
+                title="打开项目"
+                class="mr-[8px]"
+              ></el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="terminal">
+                    <el-icon><Monitor /></el-icon>
+                    终端打开
+                  </el-dropdown-item>
+                  <el-dropdown-item command="vscode">
+                    <el-icon><Monitor /></el-icon>
+                    VS Code 打开
+                  </el-dropdown-item>
+                  <el-dropdown-item command="idea">
+                    <el-icon><Cpu /></el-icon>
+                    IDEA 打开
+                  </el-dropdown-item>
+                  <el-dropdown-item command="finder">
+                    <el-icon><FolderOpened /></el-icon>
+                    文件管理器打开
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
             <el-button
               text
               type="primary"
@@ -46,20 +134,10 @@
               text
               type="primary"
               style="padding: 0"
-              title="vscode打开"
+              :icon="DocumentCopy"
               size="default"
-              :icon="FolderOpened"
-              @click="vscodeOpen(row)"
+              @click="handleCopy(row)"
             ></el-button>
-            <!-- <el-button
-              text
-              type="primary"
-              style="padding: 0"
-              title="打包"
-              size="default"
-              :icon="FolderChecked"
-              @click="handleBuildProject(row)"
-            ></el-button> -->
             <el-button
               text
               type="danger"
@@ -73,20 +151,58 @@
       </el-table>
       <projectChange ref="projectChangeRef" @success="getTableData"></projectChange>
     </div>
-  </el-card>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { Delete, Edit, FolderOpened } from '@element-plus/icons-vue';
-import { getProjectList, removeProject, batchAddProject } from '@/DB/index.db';
-import { ProjectItemType, ProjectItemTypeNoId } from '@/types/index.type';
-import { computed, defineAsyncComponent, ref } from 'vue';
-import { ElMessageBox } from 'element-plus';
+import {
+  Delete,
+  Edit,
+  FolderOpened,
+  Search,
+  DocumentCopy,
+  Monitor,
+  Cpu,
+  Refresh,
+  WarningFilled,
+} from '@element-plus/icons-vue';
+import BranchesOutlined from '@/components/icons/BranchesOutlined.vue';
+import {
+  getProjectList,
+  removeProject,
+  batchAddProject,
+  addProject,
+  updateProject,
+  batchUpdateProjects,
+  getSettings,
+} from '@/DB/index.db';
+import { ProjectItemType, ProjectItemTypeNoId, TerminalType, GitInfo } from '@/types/index.type';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { createDebounce } from '@/utils/timing';
+import { confirmDelete, notifySuccess, notifyError, notifyWarning } from '@/utils/feedback';
+import { safeReadDir, safeReadFile, safeOpenDialog } from '@/utils/utools';
+import {
+  detectProjectType,
+  getProjectTypeLabel,
+  getProjectTypeColor,
+  openWithEditor,
+} from '@/utils/project';
+import { gitWorkerQueue } from '@/utils/git-worker';
 
 const projectChange = defineAsyncComponent(() => import('@/components/project/change.vue'));
-const projectData = ref<ProjectItemType[]>([]);
+
+interface ProjectItemWithRefreshing extends ProjectItemType {
+  refreshing?: boolean;
+  uncommitted_count?: number;
+  last_commit_info?: string;
+  git_loading?: boolean;
+}
+
+const projectData = ref<ProjectItemWithRefreshing[]>([]);
 const projectChangeRef = ref();
+const searchInput = ref('');
 const search = ref('');
+const refreshingAll = ref(false);
 
 const filterTableData = computed(() =>
   projectData.value.filter(
@@ -97,47 +213,198 @@ const filterTableData = computed(() =>
   ),
 );
 
-const getTableData = () => {
-  getProjectList().then((res) => {
-    projectData.value = res;
+const debounceSearch = createDebounce(300);
+const triggerSearch = () => {
+  debounceSearch(() => {
+    search.value = searchInput.value.trim();
   });
 };
 
+watch(searchInput, () => {
+  triggerSearch();
+});
+
+const getTableData = () => {
+  getProjectList().then((res) => {
+    projectData.value = res.map((project) => ({
+      ...project,
+      project_type: project.project_type || detectProjectType(project.path),
+      refreshing: false,
+      git_loading: false,
+      uncommitted_count: project.git_info?.uncommitted_count || 0,
+      last_commit_info: project.git_info?.last_commit_info || '',
+    }));
+  });
+};
+
+const refreshAllGit = async () => {
+  if (!window.services?.refreshGitStatus) {
+    notifyError('Git 服务不可用');
+    return;
+  }
+
+  refreshingAll.value = true;
+
+  // Set loading state for all Git projects
+  projectData.value.forEach((project) => {
+    if (project.git_info?.isGit) {
+      project.git_loading = true;
+    }
+  });
+
+  let successCount = 0;
+  let errorCount = 0;
+  const projectsToUpdate: ProjectItemType[] = [];
+
+  try {
+    // Use async queue instead of synchronous loop
+    const promises = projectData.value.map(async (project, index) => {
+      if (project.git_info?.isGit) {
+        try {
+          const result = await gitWorkerQueue.addTask(project.path, 'full');
+
+          projectData.value[index].git_info = result.git_info;
+          projectData.value[index].uncommitted_count = result.uncommitted_count;
+          projectData.value[index].last_commit_info = result.last_commit_info;
+          projectData.value[index].git_loading = false;
+
+          if (result.git_info.status !== 'error') {
+            successCount++;
+            projectsToUpdate.push({
+              ...project,
+              git_info: result.git_info,
+            });
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+          projectData.value[index].git_loading = false;
+        }
+      }
+    });
+
+    await Promise.all(promises);
+
+    if (projectsToUpdate.length > 0) {
+      await batchUpdateProjects(projectsToUpdate);
+    }
+
+    if (errorCount === 0) {
+      notifySuccess(`已刷新 ${successCount} 个项目的 Git 状态`);
+    } else {
+      notifyWarning(`刷新完成：成功 ${successCount} 个，失败 ${errorCount} 个`);
+    }
+  } catch (error: any) {
+    notifyError(`批量刷新失败: ${error.message}`);
+  } finally {
+    refreshingAll.value = false;
+  }
+};
+
+const getGitStatusType = (status: string) => {
+  switch (status) {
+    case 'up-to-date':
+      return 'success';
+    case 'ahead':
+      return 'warning';
+    case 'behind':
+      return 'danger';
+    case 'diverged':
+      return 'warning';
+    case 'no-remote':
+      return 'info';
+    default:
+      return 'info';
+  }
+};
+
+const getGitStatusText = (gitInfo: GitInfo) => {
+  if (!gitInfo) return '-';
+
+  switch (gitInfo.status) {
+    case 'up-to-date':
+      return '最新';
+    case 'ahead':
+      return `领先 ${gitInfo.ahead} 个提交`;
+    case 'behind':
+      return `落后 ${gitInfo.behind} 个提交`;
+    case 'diverged':
+      return `分叉 (↑${gitInfo.ahead} ↓${gitInfo.behind})`;
+    case 'no-remote':
+      return '无远程';
+    case 'not-git':
+      return '非 Git 仓库';
+    case 'error':
+      return '错误';
+    default:
+      return '未知';
+  }
+};
+
+getTableData();
+
 const importProject = () => {
-  const files = (window as any).utools.showOpenDialog({
+  const files = safeOpenDialog({
     title: '选择项目路径',
     properties: ['openDirectory', 'multiSelections'],
   });
+
+  if (!files || files.length === 0) {
+    return;
+  }
+
   const params: ProjectItemTypeNoId[] = [];
-  // const noPackage: string[] = [];
+
   files.forEach((element: string) => {
-    const fileList = (window as any).services.readDir(`${element}`);
-    if (fileList.includes('package.json')) {
-      const packageJsonData = (window as any).services.readFile(`${element}/package.json`);
-      const data = JSON.parse(packageJsonData);
-      if (data) {
-        params.push({
-          name: data.name,
-          path: element,
-          package_name: '',
-          version: data.version,
-          desc: '',
-        });
+    const fileList = safeReadDir(element);
+    if (fileList && fileList.includes('package.json')) {
+      const packageJsonData = safeReadFile(`${element}/package.json`);
+      if (packageJsonData) {
+        try {
+          const data = JSON.parse(packageJsonData);
+          if (data) {
+            params.push({
+              name: data.name,
+              path: element,
+              package_name: '',
+              version: data.version || '',
+              desc: '',
+              project_type: detectProjectType(element),
+            });
+          }
+        } catch (error) {
+          console.error(`Failed to parse package.json for ${element}:`, error);
+          params.push({
+            name: element.split('/').pop() || element,
+            path: element,
+            package_name: '',
+            version: '',
+            desc: '',
+            project_type: detectProjectType(element),
+          });
+        }
       }
     } else {
       params.push({
-        name: element,
+        name: element.split('/').pop() || element,
         path: element,
         package_name: '',
         version: '',
         desc: '',
+        project_type: detectProjectType(element),
       });
     }
   });
 
-  batchAddProject(params as ProjectItemType[]).then(() => {
-    getTableData();
-  });
+  batchAddProject(params as ProjectItemType[])
+    .then(() => {
+      notifySuccess(`成功导入 ${params.length} 个项目`);
+      getTableData();
+    })
+    .catch((error) => {
+      notifyError(`导入项目失败: ${error.message}`);
+    });
 };
 
 const addProjectItem = () => {
@@ -148,15 +415,50 @@ const handleEdit = (row: ProjectItemType) => {
   projectChangeRef.value.init(row);
 };
 
-const vscodeOpen = (row: ProjectItemType) => {
-  window.utools.shellOpenExternal(`vscode://file/${row.path}`);
+const handleCopy = (row: ProjectItemType) => {
+  const { id, ...rest } = row;
+  addProject({
+    ...(rest as ProjectItemType),
+    id: '',
+    name: `${row.name} 副本`,
+  }).then(() => {
+    getTableData();
+  });
 };
+
+const handleOpenCommand = async (
+  command: 'terminal' | 'vscode' | 'idea' | 'finder',
+  row: ProjectItemType,
+) => {
+  if (command === 'terminal') {
+    try {
+      const settings = await getSettings();
+      let terminalType = settings.default_terminal;
+
+      if (!terminalType && window.services?.getDefaultTerminal) {
+        terminalType = (await window.services.getDefaultTerminal()) as TerminalType;
+      }
+
+      if (window.services?.openInTerminal) {
+        const result = window.services.openInTerminal(row.path, terminalType);
+        if (result.success) {
+          notifySuccess('终端已打开');
+        } else {
+          notifyError(`打开终端失败: ${result.error || '未知错误'}`);
+        }
+      } else {
+        notifyError('终端功能不可用');
+      }
+    } catch (error: any) {
+      notifyError(`打开终端失败: ${error.message}`);
+    }
+  } else {
+    openWithEditor(row.path, command);
+  }
+};
+
 const handleDelete = (row: ProjectItemType) => {
-  ElMessageBox.confirm('确定要删除吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  })
+  confirmDelete(`确定要删除项目「${row.name}」吗？`)
     .then(() => {
       removeProject(row.id).then(() => {
         getTableData();
@@ -169,4 +471,18 @@ const handleDelete = (row: ProjectItemType) => {
 
 getTableData();
 </script>
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.git-loading {
+  padding: 4px 0;
+
+  :deep(.el-skeleton__item) {
+    height: 20px;
+    border-radius: 4px;
+  }
+}
+
+.git-info,
+.git-remote {
+  transition: opacity 0.3s ease;
+}
+</style>

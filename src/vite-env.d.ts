@@ -41,6 +41,7 @@ type PlainObject = {
 
 type AnyObject<T = Any> = Record<string, T>;
 
+
 type Spread<L, R> = Omit<L, keyof R> & R;
 
 type TreeNode<T extends PlainObject, K extends string = 'children'> = Omit<T, K> & {

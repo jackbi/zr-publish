@@ -9,15 +9,19 @@
  * Copyright (C) 2025 wenbin. All rights reserved.
 -->
 <template>
-  <div class="w-full h-full flex items-center justify-between px-[15px] bg-[#fff]">
-    <div class="flex items-center">
-      <el-button :icon="isExpand ? Fold : Expand" @click="upDateExpand"></el-button>
+  <div class="w-full h-full flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <el-button text class="layout-icon" :icon="isExpand ? Fold : Expand" @click="upDateExpand"></el-button>
+      <div>
+        <div class="text-[15px] font-semibold text-[#1f2430]">ZR Publish 控制台</div>
+        <div class="text-[12px] text-[#6b7280]">本地发布与远程部署管理</div>
+      </div>
     </div>
-    <div class="flex items-center">
-      <div class="text-[16px] text-[#333] mr-[15px]">{{ nowDate }}</div>
+    <div class="flex items-center gap-4">
+      <div class="pill">{{ nowDate }}</div>
       <div class="flex items-center">
-        <el-avatar shape="square" :size="30" :src="user?.avatar" />
-        <div class="ml-[10px]">{{ user?.nickname }}</div>
+        <el-avatar shape="square" :size="34" :src="user?.avatar" />
+        <div class="ml-[10px] text-[14px] text-[#1f2430]">{{ user?.nickname }}</div>
       </div>
     </div>
   </div>

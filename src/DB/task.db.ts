@@ -11,6 +11,7 @@
 import { TaskItemType } from '@/types/index.type';
 import { cloneDeep } from 'lodash-es';
 import { nanoid } from 'nanoid';
+import { getDoc, getDocSync, readList, writeDbList, DbDoc } from './helpers';
 
 export const taskDoc: DbDoc = {
   _id: 'zr-publish/task',
@@ -21,64 +22,29 @@ export const taskDoc: DbDoc = {
  * @description: 获取文档信息
  * @return {*}
  */
-export const getTaskDoc = () => window.utools.db.promises.get('zr-publish/task');
-export const getTaskDocSync = () => window.utools.db.get('zr-publish/task');
+export const getTaskDoc = () => getDoc('zr-publish/task');
+export const getTaskDocSync = () => getDocSync('zr-publish/task');
 
 /**
  * @description: 获取任务列表
  * @param {*} return
  * @return {*}
  */
-export const getTaskList: () => Promise<TaskItemType[]> = () => {
-  return new Promise((resolve, reject) => {
-    getTaskDoc()
-      .then((res) => {
-        if (res) {
-          resolve(res.datas ? JSON.parse(res.datas) : []);
-        } else {
-          resolve([]);
-        }
-      })
-      .catch((err) => {
-        reject(err);
-      });
-  });
-};
+export const getTaskList: () => Promise<TaskItemType[]> = () => readList<TaskItemType>('zr-publish/task');
 
 /**
  * @description: 删除任务
  * @param {string} id
  * @return {*}
  */
-export const removeTask = (id: string) => {
-  const docs = getTaskDocSync() || taskDoc;
-  return new Promise((resolve, reject) => {
-    getTaskList().then((res) => {
-      if (res) {
-        const datas = cloneDeep(res);
-        const index = datas.findIndex((item) => item.id === id);
-        if (index !== -1) {
-          datas.splice(index, 1);
-          docs.datas = JSON.stringify(datas);
-          window.utools.db.promises
-            .put(docs)
-            .then((res) => {
-              if (res.ok) {
-                resolve(true);
-                docs._rev = res.rev || '';
-              } else {
-                reject(res);
-              }
-            })
-            .catch((err) => {
-              reject(err);
-            });
-        } else {
-          resolve(false);
-        }
-      }
-    });
-  });
+export const removeTask = async (id: string) => {
+  const list = await getTaskList();
+  const datas = cloneDeep(list);
+  const index = datas.findIndex((item) => item.id === id);
+  if (index === -1) return false;
+  datas.splice(index, 1);
+  await writeDbList(taskDoc, datas);
+  return true;
 };
 
 /**
@@ -86,45 +52,16 @@ export const removeTask = (id: string) => {
  * @param {TaskItemType} task
  * @return {*}
  */
-export const addTask: (task: TaskItemType) => Promise<TaskItemType | Error> = (
+export const addTask: (task: TaskItemType) => Promise<TaskItemType | Error> = async (
   task: TaskItemType,
 ) => {
   const params = cloneDeep(task);
-  const doc = getTaskDocSync() || taskDoc;
   params.id = nanoid();
-  return new Promise((resolve, reject) => {
-    getTaskList().then((res) => {
-      if (res) {
-        const datas = cloneDeep(res);
-        datas.push(params);
-        doc.datas = JSON.stringify(datas);
-        window.utools.db.promises
-          .put(doc)
-          .then((res) => {
-            if (res.ok) {
-              resolve(params);
-              doc._rev = res.rev || '';
-            }
-          })
-          .catch((err) => {
-            reject(err);
-          });
-      } else {
-        doc.datas = JSON.stringify([params]);
-        window.utools.db.promises
-          .put(doc)
-          .then((res) => {
-            if (res.ok) {
-              resolve(params);
-              doc._rev = res.rev || '';
-            }
-          })
-          .catch((err) => {
-            reject(err);
-          });
-      }
-    });
-  });
+  const list = await getTaskList();
+  const datas = cloneDeep(list);
+  datas.push(params);
+  await writeDbList(taskDoc, datas);
+  return params;
 };
 
 /**
@@ -132,38 +69,20 @@ export const addTask: (task: TaskItemType) => Promise<TaskItemType | Error> = (
  * @param {TaskItemType} task
  * @return {*}
  */
-export const updateTask: (task: TaskItemType) => Promise<TaskItemType | Error> = (
+export const updateTask: (task: TaskItemType) => Promise<TaskItemType | Error> = async (
   task: TaskItemType,
 ) => {
-  const docs = getTaskDocSync() || taskDoc;
-  return new Promise((resolve, reject) => {
-    getTaskList().then((res) => {
-      if (res) {
-        const datas = cloneDeep(res);
-        const index = datas.findIndex((item) => item.id === task.id);
-        if (index !== -1) {
-          // datas.splice(index, 1, project);
-          datas[index] = task;
-          // projectDoc.datas = JSON.stringify(datas);
-          if (!docs) return;
-          docs.datas = JSON.stringify(datas);
-          window.utools.db.promises
-            .put(docs)
-            .then((res) => {
-              if (res.ok) {
-                resolve(task);
-                docs._rev = res.rev || '';
-              } else {
-                reject(res);
-              }
-            })
-            .catch((err) => {
-              reject(err);
-            });
-        } else {
-          resolve(new Error('项目不存在'));
-        }
-      }
-    });
-  });
+  const list = await getTaskList();
+  const datas = cloneDeep(list);
+  const index = datas.findIndex((item) => item.id === task.id);
+  if (index === -1) return new Error('项目不存在');
+  datas[index] = task;
+  await writeDbList(taskDoc, datas);
+  return task;
+};
+
+export const saveTaskList = async (list: TaskItemType[]) => {
+  const datas = cloneDeep(list);
+  await writeDbList(taskDoc, datas);
+  return true;
 };

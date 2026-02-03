@@ -1,5 +1,6 @@
 <template>
   <el-dialog
+    modal-class="current-dialog"
     v-model="dialogVisible"
     :title="id ? '编辑任务' : '新增任务'"
     width="60%"
@@ -18,6 +19,12 @@
             :label="item.name"
             :value="item.id"
           />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="任务组" prop="group_id">
+        <el-select v-model="formData.group_id" clearable placeholder="选择任务组">
+          <el-option :key="'ungrouped'" label="未分组" :value="undefined" />
+          <el-option v-for="item in taskGroupList" :key="item.id" :label="item.name" :value="item.id" />
         </el-select>
       </el-form-item>
       <el-form-item label="选择文件" v-if="formData.project_id" prop="local_path">
@@ -51,27 +58,49 @@
         </el-select>
       </el-form-item>
       <template v-if="isDir">
-        <el-form-item label="是否删除远程数据" prop="is_removed">
-          <el-switch
-            v-model="formData.is_removed"
-            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-            :active-value="true"
-            :inactive-value="false"
-          />
-          <el-tooltip content="开启会先把远程文件夹删除" placement="bottom">
-            <el-button type="primary" text :icon="InfoFilled"></el-button>
-          </el-tooltip>
+        <el-form-item label="远程数据操作">
+          <div style="display: flex; gap: 24px; align-items: center;">
+            <el-checkbox v-model="formData.is_removed" label="删除远程" @change="handleRemoveChange" />
+            <el-tooltip content="开启会先把远程文件夹删除" placement="top">
+              <el-icon style="color: #909399; cursor: help;"><InfoFilled /></el-icon>
+            </el-tooltip>
+            
+            <el-checkbox v-model="formData.is_save" label="备份远程" />
+            <el-tooltip content="开启会先把远程文件夹使用zip打包" placement="top">
+              <el-icon style="color: #909399; cursor: help;"><InfoFilled /></el-icon>
+            </el-tooltip>
+          </div>
         </el-form-item>
-        <el-form-item label="是否备份远程数据" prop="is_save">
-          <el-switch
-            v-model="formData.is_save"
-            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
-            :active-value="true"
-            :inactive-value="false"
-          />
-          <el-tooltip content="开启会先把远程文件夹使用zip打包" placement="bottom">
-            <el-button type="primary" text :icon="InfoFilled"></el-button>
-          </el-tooltip>
+        
+        <el-form-item label="排除删除" v-if="formData.is_removed">
+          <el-select
+            v-model="formData.exclude_paths"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            placeholder="选择要排除删除的文件或文件夹"
+            :loading="loadingRemoteFiles"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in remoteFileList"
+              :key="item.name"
+              :label="item.name"
+              :value="item.name"
+            >
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <el-icon :style="{ color: item.isDirectory ? '#409EFF' : '#67C23A' }">
+                  <Folder v-if="item.isDirectory" />
+                  <Document v-else />
+                </el-icon>
+                <span>{{ item.name }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <div style="margin-top: 8px; font-size: 12px; color: #909399;">
+            <el-icon><InfoFilled /></el-icon>
+            选中的文件或文件夹在删除远程目录时将被保留
+          </div>
         </el-form-item>
       </template>
 
@@ -93,16 +122,24 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="cancel">取消</el-button>
-      <el-button @click="confirm" type="primary">确定</el-button>
+      <div class="dialog-footer">
+        <el-button @click="cancel">取消</el-button>
+        <el-button @click="confirm" type="primary">确定</el-button>
+      </div>
     </template>
   </el-dialog>
 </template>
 
 <script lang="ts" setup>
 import { computed, reactive, ref } from 'vue';
-import { TaskItemType, TaskItemTypeNoId, ProjectItemType, sshItemType } from '@/types/index.type';
-import { FolderOpened, InfoFilled } from '@element-plus/icons-vue';
+import {
+  TaskItemType,
+  TaskItemTypeNoId,
+  ProjectItemType,
+  sshItemType,
+  TaskGroupItemType,
+} from '@/types/index.type';
+import { FolderOpened, InfoFilled, Document, Folder } from '@element-plus/icons-vue';
 import {
   getProjectList,
   getSshList,
@@ -110,24 +147,17 @@ import {
   updateTask,
   getCommandList,
   getRemoteList,
+  getTaskGroupList,
 } from '@/DB/index.db';
 import { decrypt } from '@/utils/CryptoJS';
-import { ElMessage } from 'element-plus';
+import { safeIsDir, safeReadFile, safeOpenDialog } from '@/utils/utools';
+import { notifyError, notifySuccess } from '@/utils/feedback';
+import { useDialogForm } from '@/utils/dialog';
 import { cloneDeep } from 'lodash-es';
 
-const dialogVisible = ref(false);
-
-const projectList = ref<ProjectItemType[]>([]);
-const sshList = ref<sshItemType[]>([]);
-const commandList = ref<string[]>([]);
-const remoteList = ref<string[]>([]);
-const packageScripts = ref<string[]>([]);
-const id = ref();
-const emit = defineEmits(['success']);
-
-const formRef = ref();
-const formData = reactive<TaskItemTypeNoId>({
+const { dialogVisible, id, formData, resetDialog, openDialog } = useDialogForm<TaskItemTypeNoId>(() => ({
   name: '',
+  group_id: undefined,
   project_id: '',
   project_name: '',
   ssh_ids: [],
@@ -139,7 +169,20 @@ const formData = reactive<TaskItemTypeNoId>({
   desc: '',
   is_removed: true,
   is_save: true,
-});
+  exclude_paths: [],
+}));
+
+const projectList = ref<ProjectItemType[]>([]);
+const sshList = ref<sshItemType[]>([]);
+const commandList = ref<string[]>([]);
+const remoteList = ref<string[]>([]);
+const packageScripts = ref<string[]>([]);
+const taskGroupList = ref<TaskGroupItemType[]>([]);
+const remoteFileList = ref<Array<{ name: string; isDirectory: boolean }>>([]);
+const loadingRemoteFiles = ref(false);
+const emit = defineEmits(['success']);
+
+const formRef = ref();
 
 const formRules = reactive({
   name: [
@@ -183,30 +226,17 @@ const isDir = computed(() => {
   if (!formData.local_path) {
     return false;
   }
-  return (window as any).services.isDir(formData.local_path);
+  return safeIsDir(formData.local_path);
 });
 
 const cancel = () => {
-  dialogVisible.value = false;
-  id.value = undefined;
-  formData.name = '';
-  formData.project_id = '';
-  formData.project_name = '';
-  formData.desc = '';
-  formData.ssh_ids = [];
-  formData.ssh_names = [];
-  formData.remote_path = '';
-  formData.local_path = '';
-  formData.remote_command = '';
-  formData.local_command = '';
-  formData.is_removed = true;
-  formData.is_save = true;
+  resetDialog();
 };
 
 const handleSelectPath = () => {
   const projectData = projectList.value.find((el) => el.id === formData.project_id);
   // 通过 uTools 的 api 打开文件选择窗口
-  const files = (window as any).utools.showOpenDialog({
+  const files = safeOpenDialog({
     title: '选择项目路径',
     defaultPath: projectData?.path,
     properties: ['openDirectory', 'openFile'],
@@ -214,16 +244,25 @@ const handleSelectPath = () => {
   if (!files) return;
   const _filePath = files[0];
   formData.local_path = _filePath;
-  const packageJsonData = (window as any).services.readFile(`${projectData?.path}/package.json`);
+  const packageJsonData = safeReadFile(`${projectData?.path}/package.json`);
   if (packageJsonData) {
-    const data = JSON.parse(packageJsonData);
-    packageScripts.value = Object.values(data.scripts);
+    try {
+      const data = JSON.parse(packageJsonData);
+      packageScripts.value = Object.values(data.scripts);
+    } catch (error) {
+      notifyError('读取 package.json 失败');
+    }
   }
 };
 
 const getProjectListData = () => {
   getProjectList().then((res) => {
     projectList.value = res;
+  });
+};
+const getTaskGroupListData = () => {
+  getTaskGroupList().then((res) => {
+    taskGroupList.value = res;
   });
 };
 const getCommandListData = () => {
@@ -247,16 +286,85 @@ const getSshListData = () => {
   });
 };
 
+const handleRemoveChange = async (checked: boolean) => {
+  if (checked && formData.remote_path && formData.ssh_ids.length > 0) {
+    loadingRemoteFiles.value = true;
+    remoteFileList.value = [];
+    formData.exclude_paths = [];
+    
+    try {
+      const firstSshId = formData.ssh_ids[0];
+      const sshConfig = sshList.value.find(ssh => ssh.id === firstSshId);
+      
+      if (sshConfig && window.services?.listRemoteDirectory) {
+        const files = await window.services.listRemoteDirectory(
+          {
+            host: sshConfig.host,
+            port: sshConfig.port,
+            username: sshConfig.username,
+            password: sshConfig.password,
+          },
+          formData.remote_path
+        );
+        remoteFileList.value = files || [];
+      }
+    } catch (error) {
+      notifyError('获取远程目录内容失败: ' + (error as Error).message);
+    } finally {
+      loadingRemoteFiles.value = false;
+    }
+  } else {
+    remoteFileList.value = [];
+    formData.exclude_paths = [];
+  }
+};
+
+const fetchRemoteFileList = async () => {
+  if (formData.remote_path && formData.ssh_ids.length > 0) {
+    loadingRemoteFiles.value = true;
+    remoteFileList.value = [];
+    
+    try {
+      const firstSshId = formData.ssh_ids[0];
+      const sshConfig = sshList.value.find(ssh => ssh.id === firstSshId);
+      
+      if (sshConfig && window.services?.listRemoteDirectory) {
+        const files = await window.services.listRemoteDirectory(
+          {
+            host: sshConfig.host,
+            port: sshConfig.port,
+            username: sshConfig.username,
+            password: sshConfig.password,
+          },
+          formData.remote_path
+        );
+        remoteFileList.value = files || [];
+      }
+    } catch (error) {
+      notifyError('获取远程目录内容失败: ' + (error as Error).message);
+    } finally {
+      loadingRemoteFiles.value = false;
+    }
+  }
+};
+
 const init = (datas: TaskItemType) => {
   if (datas) {
-    Object.assign(formData, datas);
-    id.value = datas.id;
+    openDialog(datas);
+  } else {
+    openDialog();
   }
   getProjectListData();
   getSshListData();
   getCommandListData();
   getRemoteListData();
-  dialogVisible.value = true;
+  getTaskGroupListData();
+  
+  if (datas && datas.is_removed && datas.remote_path && datas.ssh_ids?.length > 0) {
+    setTimeout(() => {
+      fetchRemoteFileList();
+    }, 500);
+  }
 };
 
 const confirm = () => {
@@ -264,6 +372,9 @@ const confirm = () => {
     if (valid) {
       let api: () => Promise<TaskItemType | Error>;
       const params = cloneDeep(formData);
+      if (!params.group_id) {
+        params.group_id = undefined;
+      }
       params.ssh_names = params.ssh_ids.map((el) => {
         const sshData = sshList.value.find((_el) => _el.id === el);
         return sshData?.host || '';
@@ -274,11 +385,15 @@ const confirm = () => {
       } else {
         api = () => addTask(params as TaskItemType);
       }
-      api().then((res) => {
-        emit('success', res);
-        cancel();
-        ElMessage.success('操作成功');
-      });
+      api()
+        .then((res) => {
+          emit('success', res);
+          cancel();
+          notifySuccess();
+        })
+        .catch(() => {
+          notifyError();
+        });
     }
   });
 };

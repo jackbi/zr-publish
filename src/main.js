@@ -4,7 +4,7 @@
  * @Author: wenbin
  * @Date: 2025-02-11 14:10:21
  * @LastEditors: wenbin
- * @LastEditTime: 2025-02-12 15:33:38
+ * @LastEditTime: 2026-01-30 17:26:38
  * @FilePath: /zr-publish/src/main.js
  * Copyright (C) 2025 wenbin. All rights reserved.
  */
@@ -20,7 +20,7 @@ import App from './App.vue';
 createApp(App)
   .use(ElementPlus, {
     locale: zhCn,
-    size: 'small',
+    size: 'default',
   })
   .use(router)
   .mount('#app');

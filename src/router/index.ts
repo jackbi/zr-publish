@@ -39,15 +39,6 @@ const routes = [
     children: [],
   },
   {
-    path: '/doc',
-    name: 'Doc',
-    component: () => import('@/views/Doc/index.vue'),
-    meta: {
-      title: '使用说明',
-    },
-    children: [],
-  },
-  {
     path: '/project',
     name: 'Project',
     component: () => import('@/views/Project/index.vue'),
@@ -84,8 +75,26 @@ const routes = [
     children: [],
   },
   {
+    path: '/data-sync',
+    name: 'DataSync',
+    component: () => import('@/views/DataSync/index.vue'),
+    meta: {
+      title: '数据同步',
+    },
+    children: [],
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('@/views/Settings/index.vue'),
+    meta: {
+      title: '设置',
+    },
+    children: [],
+  },
+  {
     path: '/',
-    redirect: '/doc',
+    redirect: '/home',
   },
 ];
 

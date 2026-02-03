@@ -4,12 +4,13 @@
  * @Author: wenbin
  * @Date: 2025-02-12 11:55:56
  * @LastEditors: wenbin
- * @LastEditTime: 2025-02-20 15:18:32
+ * @LastEditTime: 2026-01-30 11:07:45
  * @FilePath: /zr-publish/src/components/project/change.vue
  * Copyright (C) 2025 wenbin. All rights reserved.
 -->
 <template>
   <el-dialog
+    modal-class="current-dialog"
     v-model="dialogVisible"
     :title="id ? '编辑项目' : '新增项目'"
     width="60%"
@@ -27,6 +28,14 @@
       <el-form-item label="项目名称" prop="name">
         <el-input v-model="formData.name" placeholder="请输入项目名称" />
       </el-form-item>
+      <el-form-item label="项目类型" v-if="formData.project_type">
+        <el-tag 
+          :color="getProjectTypeColor(formData.project_type)"
+          style="border: none; color: white;"
+        >
+          {{ getProjectTypeLabel(formData.project_type) }}
+        </el-tag>
+      </el-form-item>
       <!-- <el-form-item label="打包后的文件名" prop="package_name">
         <el-input v-model="formData.package_name" placeholder="请输入打包后的文件名" />
       </el-form-item> -->
@@ -38,32 +47,36 @@
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="cancel">取消</el-button>
-      <el-button @click="confirm" type="primary">确定</el-button>
+      <div class="dialog-footer">
+        <el-button @click="cancel">取消</el-button>
+        <el-button @click="confirm" type="primary">确定</el-button>
+      </div>
     </template>
   </el-dialog>
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { ProjectItemTypeNoId, ProjectItemType } from '@/types/index.type';
 import { FolderOpened } from '@element-plus/icons-vue';
 import { addProject, updateProject } from '@/DB/index.db';
-import { ElMessage } from 'element-plus';
+import { notifyError, notifySuccess } from '@/utils/feedback';
+import { useDialogForm } from '@/utils/dialog';
+import { safeOpenDialog, safeReadFile } from '@/utils/utools';
+import { detectProjectType, getProjectTypeLabel, getProjectTypeColor } from '@/utils/project';
 
-const dialogVisible = ref(false);
-
-const id = ref();
+const { dialogVisible, id, formData, resetDialog, openDialog } = useDialogForm<ProjectItemTypeNoId>(
+  () => ({
+    name: '',
+    path: '',
+    package_name: '',
+    version: '',
+    desc: '',
+  }),
+);
 const emit = defineEmits(['success']);
 
 const formRef = ref();
-const formData = reactive<ProjectItemTypeNoId>({
-  name: '',
-  path: '',
-  package_name: '',
-  version: '',
-  desc: '',
-});
 
 const formRules = reactive({
   name: [
@@ -90,38 +103,39 @@ const formRules = reactive({
 });
 
 const cancel = () => {
-  dialogVisible.value = false;
-  id.value = undefined;
-  formData.name = '';
-  formData.path = '';
-  formData.version = '';
-  formData.desc = '';
-  formData.package_name = '';
+  resetDialog();
 };
 
 const handleSelectPath = () => {
-  // 通过 uTools 的 api 打开文件选择窗口
-  const files = (window as any).utools.showOpenDialog({
+  const files = safeOpenDialog({
     title: '选择项目路径',
     properties: ['openDirectory'],
   });
   if (!files) return;
   const _filePath = files[0];
   formData.path = _filePath;
-  const packageJsonData = (window as any).services.readFile(`${_filePath}/package.json`);
+  formData.project_type = detectProjectType(_filePath);
+  
+  const packageJsonData = safeReadFile(`${_filePath}/package.json`);
   if (packageJsonData) {
-    const data = JSON.parse(packageJsonData);
-    formData.name = data.name;
-    formData.version = data.version;
+    try {
+      const data = JSON.parse(packageJsonData);
+      formData.name = data.name;
+      formData.version = data.version;
+    } catch (error) {
+      notifyError('读取 package.json 失败');
+    }
   }
 };
 
-const init = (datas: ProjectItemTypeNoId) => {
-  if (datas) {
-    Object.assign(formData, datas);
-    id.value = datas.id;
+watch(() => formData.path, (newPath) => {
+  if (newPath && !formData.project_type) {
+    formData.project_type = detectProjectType(newPath);
   }
-  dialogVisible.value = true;
+});
+
+const init = (datas: ProjectItemTypeNoId) => {
+  openDialog(datas);
 };
 
 const confirm = () => {
@@ -133,11 +147,15 @@ const confirm = () => {
       } else {
         api = () => addProject(formData as ProjectItemType);
       }
-      api().then((res) => {
-        emit('success', res);
-        cancel();
-        ElMessage.success('操作成功');
-      });
+      api()
+        .then((res) => {
+          emit('success', res);
+          cancel();
+          notifySuccess();
+        })
+        .catch(() => {
+          notifyError();
+        });
     }
   });
 };

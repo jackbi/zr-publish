@@ -9,20 +9,46 @@
  * Copyright (C) 2025 wenbin. All rights reserved.
 -->
 <template>
-  <el-card style="width: 100%; height: 100%" body-class="w-full h-[calc(100%-51px)] box-border">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div class="text-[#333] text-[16px]">指令管理</div>
-        <div class="flex items-center">
-          <el-button @click="addProjectItem" type="primary">新增指令</el-button>
-        </div>
+  <div class="page-stack">
+    <header class="page-header page-header--sticky">
+      <div class="page-title">指令管理</div>
+      <div class="page-actions page-actions--inline">
+        <el-input
+          class="search-input w-[220px]"
+          type="text"
+          v-model="searchInput"
+          placeholder="搜索指令内容"
+          clearable
+          :prefix-icon="Search"
+          @keyup.enter="triggerSearch"
+          @input="triggerSearch"
+          @clear="triggerSearch"
+        >
+        </el-input>
+        <el-button @click="addProjectItem" type="primary">新增指令</el-button>
       </div>
-    </template>
-    <div class="w-full h-full">
-      <el-table :data="CommandData" style="width: 100%" border script height="100%">
+    </header>
+    <div class="page-content">
+      <el-table :data="filterTableData" style="width: 100%" border height="100%">
         <el-table-column prop="content" label="内容" min-width="120" />
-        <el-table-column label="操作" fixed="right" width="100">
+        <el-table-column label="操作" fixed="right" width="150">
           <template #default="{ row }">
+            <el-button
+              text
+              type="primary"
+              style="padding: 0"
+              :icon="Edit"
+              size="default"
+              @click="handleEdit(row)"
+            ></el-button>
+            <el-button
+              text
+              type="primary"
+              style="padding: 0"
+              :icon="DocumentCopy"
+              size="default"
+              @click="handleCopy(row)"
+            ></el-button>
             <el-button
               text
               type="danger"
@@ -34,19 +60,23 @@
           </template>
         </el-table-column>
       </el-table>
-      <changeCommand ref="changeCommandRef" @success="getTableData"></changeCommand>
+      <changeCommand ref="changeCommandRef" @success="handleSuccess"></changeCommand>
     </div>
-  </el-card>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { Delete } from '@element-plus/icons-vue';
-import { getCommandList, removeCommand } from '@/DB/index.db';
-import { defineAsyncComponent, ref } from 'vue';
-import { ElMessageBox } from 'element-plus';
+import { Delete, Search, DocumentCopy, Edit } from '@element-plus/icons-vue';
+import { getCommandList, removeCommand, addCommand, updateCommand } from '@/DB/index.db';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { createDebounce } from '@/utils/timing';
+import { confirmDelete } from '@/utils/feedback';
 
 const CommandData = ref<{ content: string }[]>([]);
+const searchInput = ref('');
+const search = ref('');
 const changeCommandRef = ref();
+const editingCommand = ref<string | null>(null);
 const changeCommand = defineAsyncComponent(() => import('@/components/command/change.vue'));
 
 const getTableData = () => {
@@ -57,16 +87,35 @@ const getTableData = () => {
   });
 };
 
+const filterTableData = computed(() => {
+  return CommandData.value.filter(
+    (data) => !search.value || data.content.includes(search.value),
+  );
+});
+
+const debounceSearch = createDebounce(300);
+const triggerSearch = () => {
+  debounceSearch(() => {
+    search.value = searchInput.value.trim();
+  });
+};
+
+watch(searchInput, () => {
+  triggerSearch();
+});
+
 const addProjectItem = () => {
+  editingCommand.value = null;
   changeCommandRef.value.init();
 };
 
+const handleEdit = (row: { content: string }) => {
+  editingCommand.value = row.content;
+  changeCommandRef.value.init(row.content);
+};
+
 const handleDelete = (row: { content: string }) => {
-  ElMessageBox.confirm('确定要删除吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  })
+  confirmDelete('确定要删除该指令吗？')
     .then(() => {
       removeCommand(row.content).then(() => {
         getTableData();
@@ -75,6 +124,23 @@ const handleDelete = (row: { content: string }) => {
     .catch(() => {
       // 取消操作
     });
+};
+
+const handleCopy = (row: { content: string }) => {
+  addCommand(`${row.content} 副本`).then(() => {
+    getTableData();
+  });
+};
+
+const handleSuccess = (value: string) => {
+  if (editingCommand.value) {
+    updateCommand(editingCommand.value, value).then(() => {
+      editingCommand.value = null;
+      getTableData();
+    });
+    return;
+  }
+  getTableData();
 };
 
 getTableData();

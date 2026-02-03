@@ -11,6 +11,7 @@
 export interface TaskItemType {
   id: string;
   name: string;
+  group_id?: string;
   project_id: string;
   project_name: string;
   ssh_ids: string[];
@@ -22,8 +23,18 @@ export interface TaskItemType {
   desc?: string;
   is_removed?: boolean;
   is_save?: boolean;
+  exclude_paths?: string[];
 }
 
 export interface TaskItemTypeNoId extends Omit<TaskItemType, 'id'> {
   id?: string;
+}
+
+export interface TaskGroupView {
+  id: string;
+  name: string;
+  allTasks: TaskItemType[];
+  tasks: TaskItemType[];
+  totalCount: number;
+  isUngrouped?: boolean;
 }
