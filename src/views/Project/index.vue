@@ -245,29 +245,28 @@ const refreshAllGit = async () => {
 
   refreshingAll.value = true;
 
-  // Set loading state for all Git projects
+  // Set loading state for all projects (not just known Git projects)
   projectData.value.forEach((project) => {
-    if (project.git_info?.isGit) {
-      project.git_loading = true;
-    }
+    project.git_loading = true;
   });
 
   let successCount = 0;
   let errorCount = 0;
+  let notGitCount = 0;
   const projectsToUpdate: ProjectItemType[] = [];
 
   try {
-    // Use async queue instead of synchronous loop
+    // Check all projects, not just those with git_info.isGit
     const promises = projectData.value.map(async (project, index) => {
-      if (project.git_info?.isGit) {
-        try {
-          const result = await gitWorkerQueue.addTask(project.path, 'full');
+      try {
+        const result = await gitWorkerQueue.addTask(project.path, 'full');
 
-          projectData.value[index].git_info = result.git_info;
-          projectData.value[index].uncommitted_count = result.uncommitted_count;
-          projectData.value[index].last_commit_info = result.last_commit_info;
-          projectData.value[index].git_loading = false;
+        projectData.value[index].git_info = result.git_info;
+        projectData.value[index].uncommitted_count = result.uncommitted_count;
+        projectData.value[index].last_commit_info = result.last_commit_info;
+        projectData.value[index].git_loading = false;
 
+        if (result.git_info.isGit) {
           if (result.git_info.status !== 'error') {
             successCount++;
             projectsToUpdate.push({
@@ -277,10 +276,12 @@ const refreshAllGit = async () => {
           } else {
             errorCount++;
           }
-        } catch (error) {
-          errorCount++;
-          projectData.value[index].git_loading = false;
+        } else {
+          notGitCount++;
         }
+      } catch (error) {
+        errorCount++;
+        projectData.value[index].git_loading = false;
       }
     });
 
@@ -291,9 +292,9 @@ const refreshAllGit = async () => {
     }
 
     if (errorCount === 0) {
-      notifySuccess(`已刷新 ${successCount} 个项目的 Git 状态`);
+      notifySuccess(`已刷新 ${successCount} 个 Git 项目${notGitCount > 0 ? `，跳过 ${notGitCount} 个非 Git 项目` : ''}`);
     } else {
-      notifyWarning(`刷新完成：成功 ${successCount} 个，失败 ${errorCount} 个`);
+      notifyWarning(`刷新完成：成功 ${successCount} 个，失败 ${errorCount} 个${notGitCount > 0 ? `，跳过 ${notGitCount} 个非 Git 项目` : ''}`);
     }
   } catch (error: any) {
     notifyError(`批量刷新失败: ${error.message}`);

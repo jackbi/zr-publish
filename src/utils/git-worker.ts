@@ -72,11 +72,24 @@ class GitWorkerQueue {
   }
 
   private async getFullGitInfo(projectPath: string): Promise<any> {
-    const gitInfo = window.services?.getGitInfo(projectPath);
+    if (!window.services?.getGitInfo) {
+      throw new Error('getGitInfo service not available');
+    }
+    
+    const gitInfo = window.services.getGitInfo(projectPath);
     
     if (!gitInfo || !gitInfo.isGit) {
       return {
-        git_info: gitInfo,
+        git_info: gitInfo || {
+          isGit: false,
+          branch: '',
+          remote: '',
+          remoteUrl: '',
+          status: 'not-git',
+          ahead: 0,
+          behind: 0,
+          hasChanges: false,
+        },
         uncommitted_count: 0,
         last_commit_info: '',
       };
