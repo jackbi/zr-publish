@@ -4,7 +4,7 @@
  * @Author: wenbin
  * @Date: 2025-02-12 11:13:03
  * @LastEditors: wenbin
- * @LastEditTime: 2026-02-03 16:14:46
+ * @LastEditTime: 2026-02-04 09:32:06
  * @FilePath: /zr-publish/src/views/Project/index.vue
  * Copyright (C) 2025 wenbin. All rights reserved.
 -->
@@ -70,7 +70,7 @@
             <span v-else style="color: #909399">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="代码状态" width="150">
+        <el-table-column label="代码状态" min-width="120">
           <template #default="{ row }">
             <div v-if="row.git_loading" class="git-loading">
               <el-skeleton :rows="1" animated />
@@ -85,22 +85,13 @@
                 {{ getGitStatusText(row.git_info) }}
               </el-tag>
               <span v-else style="color: #909399">-</span>
-              <el-button
-                text
-                type="primary"
-                :icon="Refresh"
-                size="small"
-                @click="handleRefreshSingleGit(row)"
-                title="刷新 Git 状态"
-                style="padding: 4px; margin-left: auto"
-              ></el-button>
             </div>
           </template>
         </el-table-column>
         <!-- <el-table-column prop="package_name" label="打包后文件名" width="120" /> -->
         <el-table-column prop="version" label="项目版本" width="100" />
         <el-table-column prop="desc" label="备注" min-width="100" />
-        <el-table-column label="操作" fixed="right" width="120">
+        <el-table-column label="操作" fixed="right" width="150">
           <template #default="{ row }">
             <el-dropdown trigger="click" @command="(cmd) => handleOpenCommand(cmd, row)">
               <el-button
@@ -133,6 +124,15 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
+            <el-button
+              text
+              type="primary"
+              :icon="Refresh"
+              size="small"
+              @click="handleRefreshSingleGit(row)"
+              title="刷新 Git 状态"
+              style="padding: 4px; margin-left: auto"
+            ></el-button>
             <el-button
               text
               type="primary"
@@ -303,9 +303,13 @@ const refreshAllGit = async () => {
     }
 
     if (errorCount === 0) {
-      notifySuccess(`已刷新 ${successCount} 个 Git 项目${notGitCount > 0 ? `，跳过 ${notGitCount} 个非 Git 项目` : ''}`);
+      notifySuccess(
+        `已刷新 ${successCount} 个 Git 项目${notGitCount > 0 ? `，跳过 ${notGitCount} 个非 Git 项目` : ''}`,
+      );
     } else {
-      notifyWarning(`刷新完成：成功 ${successCount} 个，失败 ${errorCount} 个${notGitCount > 0 ? `，跳过 ${notGitCount} 个非 Git 项目` : ''}`);
+      notifyWarning(
+        `刷新完成：成功 ${successCount} 个，失败 ${errorCount} 个${notGitCount > 0 ? `，跳过 ${notGitCount} 个非 Git 项目` : ''}`,
+      );
     }
   } catch (error: any) {
     notifyError(`批量刷新失败: ${error.message}`);
