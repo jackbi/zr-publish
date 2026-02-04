@@ -70,20 +70,31 @@
             <span v-else style="color: #909399">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="代码状态" width="120">
+        <el-table-column label="代码状态" width="150">
           <template #default="{ row }">
             <div v-if="row.git_loading" class="git-loading">
               <el-skeleton :rows="1" animated />
             </div>
-            <el-tag
-              v-else-if="row.git_info?.isGit"
-              :type="getGitStatusType(row.git_info.status)"
-              size="small"
-              effect="plain"
-            >
-              {{ getGitStatusText(row.git_info) }}
-            </el-tag>
-            <span v-else style="color: #909399">-</span>
+            <div v-else style="display: flex; align-items: center; gap: 8px">
+              <el-tag
+                v-if="row.git_info?.isGit"
+                :type="getGitStatusType(row.git_info.status)"
+                size="small"
+                effect="plain"
+              >
+                {{ getGitStatusText(row.git_info) }}
+              </el-tag>
+              <span v-else style="color: #909399">-</span>
+              <el-button
+                text
+                type="primary"
+                :icon="Refresh"
+                size="small"
+                @click="handleRefreshSingleGit(row)"
+                title="刷新 Git 状态"
+                style="padding: 4px; margin-left: auto"
+              ></el-button>
+            </div>
           </template>
         </el-table-column>
         <!-- <el-table-column prop="package_name" label="打包后文件名" width="120" /> -->
@@ -300,6 +311,45 @@ const refreshAllGit = async () => {
     notifyError(`批量刷新失败: ${error.message}`);
   } finally {
     refreshingAll.value = false;
+  }
+};
+
+const handleRefreshSingleGit = async (project: ProjectItemWithRefreshing) => {
+  if (!window.services?.getGitInfo) {
+    notifyError('Git 服务不可用');
+    return;
+  }
+
+  // Find project index
+  const index = projectData.value.findIndex((p) => p.id === project.id);
+  if (index === -1) return;
+
+  // Set loading state
+  projectData.value[index].git_loading = true;
+
+  try {
+    const result = await gitWorkerQueue.addTask(project.path, 'full');
+
+    projectData.value[index].git_info = result.git_info;
+    projectData.value[index].uncommitted_count = result.uncommitted_count;
+    projectData.value[index].last_commit_info = result.last_commit_info;
+    projectData.value[index].git_loading = false;
+
+    // Update to database
+    if (result.git_info.isGit && result.git_info.status !== 'error') {
+      await updateProject({
+        ...project,
+        git_info: result.git_info,
+      });
+      notifySuccess(`已刷新项目「${project.name}」的 Git 状态`);
+    } else if (result.git_info.isGit && result.git_info.status === 'error') {
+      notifyWarning(`项目「${project.name}」刷新失败`);
+    } else {
+      notifyWarning(`项目「${project.name}」不是 Git 仓库`);
+    }
+  } catch (error: any) {
+    projectData.value[index].git_loading = false;
+    notifyError(`刷新失败: ${error.message}`);
   }
 };
 
