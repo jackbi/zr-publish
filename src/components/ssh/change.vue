@@ -2,7 +2,7 @@
   <el-dialog
     modal-class="current-dialog"
     v-model="dialogVisible"
-    :title="id ? '编辑SSH链接' : '新增SSH链接'"
+    :title="id ? '编辑 SSH 链接' : '新增 SSH 链接'"
     width="60%"
     :before-close="beforeClose"
     draggable
@@ -11,8 +11,8 @@
       <el-form-item label="名称" prop="name">
         <el-input v-model="formData.name" placeholder="请输入名称" />
       </el-form-item>
-      <el-form-item label="ip地址" prop="host">
-        <el-input v-model="formData.host" placeholder="ip地址" />
+      <el-form-item label="IP 地址" prop="host">
+        <el-input v-model="formData.host" placeholder="如 10.20.30.11" />
       </el-form-item>
       <el-form-item label="端口" prop="port">
         <el-input-number v-model="formData.port" placeholder="端口" />
@@ -104,7 +104,7 @@ const formRules = reactive({
   host: [
     {
       required: true,
-      message: '请输入ip地址',
+      message: '请输入正确的 IPv4 地址',
       pattern:
         /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
       trigger: 'blur',

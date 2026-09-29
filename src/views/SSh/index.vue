@@ -4,7 +4,7 @@
       <div class="page-title">SSH 管理</div>
       <div class="page-actions page-actions--inline">
         <el-input
-          class="search-input w-[220px]"
+          class="search-input"
           type="text"
           v-model="searchInput"
           placeholder="搜索名称/IP"
@@ -20,18 +20,18 @@
     <div class="page-content">
       <el-table :data="filterTableData" style="width: 100%" border height="100%">
         <el-table-column prop="name" label="名称" min-width="120" />
-        <el-table-column prop="host" label="ip地址" min-width="120" />
-        <el-table-column prop="port" label="端口" width="80" />
-        <el-table-column prop="username" label="用户名" width="100" />
-        <el-table-column label="认证方式" width="100">
+        <el-table-column prop="host" label="IP 地址" min-width="130" class-name="cell-mono" />
+        <el-table-column prop="port" label="端口" width="68" class-name="cell-num" />
+        <el-table-column prop="username" label="用户名" width="96" class-name="cell-mono" />
+        <el-table-column label="认证方式" width="84">
           <template #default="{ row }">
             <el-tag :type="row.auth_type === 'privateKey' ? 'success' : 'primary'" size="small">
               {{ row.auth_type === 'privateKey' ? '密钥' : '密码' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="desc" label="描述" min-width="120" show-overflow-tooltip />
-        <el-table-column label="操作" fixed="right" width="150">
+        <el-table-column prop="desc" label="描述" min-width="100" show-overflow-tooltip />
+        <el-table-column label="操作" fixed="right" width="160" align="center" class-name="cell-actions">
           <template #default="{ row }">
             <el-button
               text
@@ -282,13 +282,13 @@ getTableData();
   .test-detail {
     margin-top: 16px;
     padding: 12px;
-    background: #f5f7fa;
+    background: var(--color-surface-sunken);
     border-radius: 4px;
 
     p {
       margin: 4px 0;
       font-size: 14px;
-      color: #606266;
+      color: var(--color-text-secondary);
     }
   }
 

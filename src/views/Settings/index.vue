@@ -1,12 +1,16 @@
 <template>
   <div class="page-stack">
-    <header class="page-header page-header--sticky" style="height: 45px; padding: 0 24px">
+    <header class="page-header page-header--sticky">
       <div class="page-title">设置</div>
+      <div class="page-actions page-actions--inline">
+        <el-button @click="refreshTerminals" :loading="detecting">重新检测终端</el-button>
+        <el-button type="primary" @click="saveSettings" :loading="saving">保存设置</el-button>
+      </div>
     </header>
-    <div class="page-content" style="padding: 24px; overflow-y: auto">
-      <el-card style="margin-bottom: 24px">
+    <div class="page-content page-content--plain page-content--scroll">
+      <el-card>
         <template #header>
-          <div class="card-header" style="padding: 12px 0">
+          <div class="card-header">
             <span>终端设置</span>
           </div>
         </template>
@@ -16,7 +20,7 @@
             <el-select
               v-model="formData.default_terminal"
               placeholder="选择默认终端"
-              style="width: 300px"
+              style="width: 240px"
               @change="handleTerminalChange"
             >
               <el-option
@@ -33,9 +37,7 @@
                 </div>
               </el-option>
             </el-select>
-            <div style="margin-top: 8px; font-size: 12px; color: #909399">
-              选择打开 SSH 和项目时使用的默认终端
-            </div>
+            <div class="form-hint">选择打开 SSH 和项目时使用的默认终端</div>
           </el-form-item>
 
           <el-form-item label="检测到的终端">
@@ -45,7 +47,11 @@
                 :key="terminal.type"
                 class="terminal-item"
               >
-                <el-icon :style="{ color: terminal.available ? '#67C23A' : '#909399' }">
+                <el-icon
+                  :style="{
+                    color: terminal.available ? 'var(--color-success)' : 'var(--color-text-muted)',
+                  }"
+                >
                   <CircleCheck v-if="terminal.available" />
                   <CircleClose v-else />
                 </el-icon>
@@ -55,11 +61,6 @@
                 </el-tag>
               </div>
             </div>
-          </el-form-item>
-
-          <el-form-item>
-            <el-button type="primary" @click="saveSettings" :loading="saving">保存设置</el-button>
-            <el-button @click="refreshTerminals" :loading="detecting">重新检测</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -77,16 +78,14 @@
               v-model="formData.git_auto_refresh_enabled"
               @change="handleGitAutoRefreshChange"
             />
-            <div style="margin-top: 8px; font-size: 12px; color: #909399">
-              启用后将定期自动刷新项目的 Git 状态信息
-            </div>
+            <div class="form-hint">启用后将定期自动刷新项目的 Git 状态信息</div>
           </el-form-item>
 
           <el-form-item label="刷新间隔" v-if="formData.git_auto_refresh_enabled">
             <el-select
               v-model="formData.git_auto_refresh_interval"
               placeholder="选择刷新间隔"
-              style="width: 300px"
+              style="width: 240px"
               @change="handleGitIntervalChange"
             >
               <el-option label="5 分钟" :value="5" />
@@ -95,19 +94,13 @@
               <el-option label="30 分钟" :value="30" />
               <el-option label="60 分钟" :value="60" />
             </el-select>
-            <div style="margin-top: 8px; font-size: 12px; color: #909399">
-              自动刷新的时间间隔，建议设置为 10 分钟或更长
-            </div>
+            <div class="form-hint">自动刷新的时间间隔，建议设置为 10 分钟或更长</div>
           </el-form-item>
 
           <el-form-item v-if="formData.git_auto_refresh_enabled">
             <el-alert type="info" :closable="false" show-icon>
               <template #title>自动刷新将在后台定期执行 git fetch，可能会消耗网络流量</template>
             </el-alert>
-          </el-form-item>
-
-          <el-form-item>
-            <el-button type="primary" @click="saveSettings" :loading="saving">保存设置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -219,13 +212,13 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  background: #f5f7fa;
+  background: var(--color-surface-sunken);
   border-radius: 4px;
 
   .terminal-name {
     flex: 1;
     font-size: 14px;
-    color: #606266;
+    color: var(--color-text-secondary);
   }
 }
 </style>

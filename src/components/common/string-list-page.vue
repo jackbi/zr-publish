@@ -9,7 +9,7 @@
       <div class="page-title">{{ config.title }}</div>
       <div class="page-actions page-actions--inline">
         <el-input
-          class="search-input w-[220px]"
+          class="search-input"
           type="text"
           v-model="searchInput"
           :placeholder="config.searchPlaceholder"
@@ -21,8 +21,19 @@
     </header>
     <div class="page-content">
       <el-table :data="filterTableData" style="width: 100%" border height="100%" row-key="content">
-        <el-table-column prop="content" :label="config.columnLabel" min-width="120" />
-        <el-table-column label="操作" fixed="right" width="150">
+        <el-table-column
+          prop="content"
+          :label="config.columnLabel"
+          min-width="120"
+          class-name="cell-mono"
+        />
+        <el-table-column
+          label="操作"
+          fixed="right"
+          width="104"
+          align="center"
+          class-name="cell-actions"
+        >
           <template #default="{ row }">
             <el-button
               text

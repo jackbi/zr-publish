@@ -28,6 +28,7 @@ export const getSettings = async (): Promise<SettingsItemType> => {
       id: 'default',
       default_terminal: undefined,
       terminal_custom_command: '',
+      collapsed_groups: [],
     };
     await writeSingle(settingsDoc, defaultSettings);
     return defaultSettings;
@@ -40,7 +41,9 @@ export const getSettings = async (): Promise<SettingsItemType> => {
  * @param {Partial<SettingsItemType>} settings
  * @return {*}
  */
-export const updateSettings = async (settings: Partial<SettingsItemType>): Promise<SettingsItemType> => {
+export const updateSettings = async (
+  settings: Partial<SettingsItemType>,
+): Promise<SettingsItemType> => {
   const current = await getSettings();
   const updated = { ...current, ...settings };
   await writeSingle(settingsDoc, updated);

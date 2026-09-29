@@ -71,12 +71,12 @@
               @change="handleRemoveChange"
             />
             <el-tooltip content="开启会先把远程文件夹删除" placement="top">
-              <el-icon style="color: #909399; cursor: help"><InfoFilled /></el-icon>
+              <el-icon style="color: var(--color-text-muted); cursor: help"><InfoFilled /></el-icon>
             </el-tooltip>
 
             <el-checkbox v-model="formData.is_save" label="备份远程" />
             <el-tooltip content="开启会先把远程文件夹使用zip打包" placement="top">
-              <el-icon style="color: #909399; cursor: help"><InfoFilled /></el-icon>
+              <el-icon style="color: var(--color-text-muted); cursor: help"><InfoFilled /></el-icon>
             </el-tooltip>
           </div>
         </el-form-item>
@@ -98,7 +98,11 @@
               :value="item.name"
             >
               <div style="display: flex; align-items: center; gap: 8px">
-                <el-icon :style="{ color: item.isDirectory ? '#409EFF' : '#67C23A' }">
+                <el-icon
+                  :style="{
+                    color: item.isDirectory ? 'var(--color-primary)' : 'var(--color-success)',
+                  }"
+                >
                   <Folder v-if="item.isDirectory" />
                   <Document v-else />
                 </el-icon>
@@ -106,7 +110,7 @@
               </div>
             </el-option>
           </el-select>
-          <div style="margin-top: 8px; font-size: 12px; color: #909399">
+          <div class="form-hint">
             <el-icon><InfoFilled /></el-icon>
             选中的文件或文件夹在删除远程目录时将被保留
           </div>

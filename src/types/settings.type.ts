@@ -6,17 +6,17 @@
  * @FilePath: /zr-publish/src/types/settings.type.ts
  */
 
-export type TerminalType = 
-  | 'Tabby'           // Cross-platform Tabby
-  | 'Terminal'        // macOS Terminal
-  | 'iTerm'           // macOS iTerm2
-  | 'Warp'            // macOS Warp
-  | 'cmd'             // Windows Command Prompt
-  | 'powershell'      // Windows PowerShell
+export type TerminalType =
+  | 'Tabby' // Cross-platform Tabby
+  | 'Terminal' // macOS Terminal
+  | 'iTerm' // macOS iTerm2
+  | 'Warp' // macOS Warp
+  | 'cmd' // Windows Command Prompt
+  | 'powershell' // Windows PowerShell
   | 'WindowsTerminal' // Windows Terminal
-  | 'gnome-terminal'  // Linux GNOME Terminal
-  | 'konsole'         // Linux KDE Konsole
-  | 'xterm';          // Linux xterm
+  | 'gnome-terminal' // Linux GNOME Terminal
+  | 'konsole' // Linux KDE Konsole
+  | 'xterm'; // Linux xterm
 
 export interface TerminalInfo {
   type: TerminalType;
@@ -32,6 +32,8 @@ export interface SettingsItemType {
   terminal_custom_command?: string;
   git_auto_refresh_enabled?: boolean;
   git_auto_refresh_interval?: number;
+  /** 任务管理里已折叠的任务组 id（本地视图偏好，不参与数据导出） */
+  collapsed_groups?: string[];
 }
 
 export interface SettingsItemTypeNoId extends Omit<SettingsItemType, 'id'> {

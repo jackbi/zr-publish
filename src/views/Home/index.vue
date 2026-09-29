@@ -10,11 +10,11 @@
 -->
 <template>
   <div class="home-page">
-    <header class="home-header home-header--sticky">
-      <div class="home-title">任务管理</div>
-      <div class="home-actions">
+    <header class="page-header page-header--sticky">
+      <div class="page-title">任务管理</div>
+      <div class="page-actions page-actions--inline">
         <el-input
-          class="search-input w-[260px]"
+          class="search-input"
           type="text"
           v-model="searchInput"
           placeholder="搜索任务名称/备注"
@@ -24,7 +24,7 @@
           @clear="triggerSearch"
         ></el-input>
         <el-select
-          class="search-input w-[200px]"
+          class="search-input"
           v-model="selectedGroupId"
           placeholder="任务组筛选"
           clearable
@@ -38,6 +38,17 @@
             :value="item.id"
           />
         </el-select>
+        <el-button
+          class="fold-toggle"
+          :icon="allGroupsCollapsed ? Expand : Fold"
+          :disabled="!filteredGroups.length"
+          :title="allGroupsCollapsed ? '全部展开' : '全部折叠'"
+          @click="toggleAllGroups"
+        >
+          <span class="fold-toggle__label">
+            {{ allGroupsCollapsed ? '全部展开' : '全部折叠' }}
+          </span>
+        </el-button>
         <el-button type="primary" @click="addTaskItem">新增任务</el-button>
         <el-button @click="addGroup">新增任务组</el-button>
       </div>
@@ -46,11 +57,25 @@
     <section v-if="filteredGroups.length" class="task-group-list">
       <article v-for="group in filteredGroups" :key="group.id" class="task-group">
         <header class="task-group__header">
-          <div class="task-group__title">
-            <el-icon><Folder /></el-icon>
-            <span>{{ group.name }}</span>
-            <span class="task-group__count">({{ group.totalCount }})</span>
-          </div>
+          <button
+            type="button"
+            class="task-group__toggle"
+            :aria-expanded="isGroupBodyVisible(group)"
+            :aria-controls="`task-group-body-${group.id}`"
+            @click="toggleGroupCollapsed(group.id)"
+          >
+            <el-icon
+              class="task-group__caret"
+              :class="{ 'is-collapsed': !isGroupBodyVisible(group) }"
+            >
+              <ArrowDown />
+            </el-icon>
+            <span class="task-group__title">
+              <el-icon><Folder /></el-icon>
+              <span>{{ group.name }}</span>
+              <span class="task-group__count">({{ group.totalCount }})</span>
+            </span>
+          </button>
           <div class="task-group__actions">
             <el-button
               text
@@ -79,64 +104,68 @@
             </el-button>
           </div>
         </header>
-        <section v-if="group.tasks.length" class="task-grid">
-          <article v-for="row in group.tasks" :key="row.id" class="task-card">
-            <div class="task-card__head">
-              <div>
-                <div class="task-card__title">{{ row.name }}</div>
-                <div class="task-card__meta">{{ row.desc || '暂无备注' }}</div>
-              </div>
-              <div class="task-card__actions task-card__actions--icon">
-                <el-button
-                  circle
-                  class="shrink-0"
-                  :icon="Edit"
-                  @click="handleEdit(row)"
-                  title="编辑"
-                />
-                <el-button
-                  circle
-                  class="shrink-0"
-                  :icon="DocumentCopy"
-                  @click="handleCopy(row)"
-                  title="复制"
-                />
-                <el-button
-                  circle
-                  class="shrink-0"
-                  :icon="Promotion"
-                  @click="handlePublish(row)"
-                  title="发布"
-                />
-                <el-button
-                  circle
-                  class="shrink-0"
-                  type="danger"
-                  :icon="Delete"
-                  @click="handleDelete(row)"
-                  title="删除"
-                />
-              </div>
-            </div>
-            <div class="task-card__body">
-              <div class="task-field">
-                <span class="task-field__label">本地项目</span>
-                <span class="task-field__value">{{ row.project_name || '-' }}</span>
-              </div>
-              <div class="task-field">
-                <span class="task-field__label">目标服务器</span>
-                <span class="task-field__value">
-                  {{ row.ssh_names.length ? row.ssh_names.join('、') : '-' }}
-                </span>
-              </div>
-              <div class="task-field task-field--full">
-                <span class="task-field__label">目标路径</span>
-                <span class="task-field__value">{{ row.remote_path || '-' }}</span>
-              </div>
-            </div>
-          </article>
-        </section>
-        <div v-else class="task-group__empty">暂无匹配任务</div>
+        <el-collapse-transition>
+          <div v-show="isGroupBodyVisible(group)" :id="`task-group-body-${group.id}`">
+            <section v-if="group.tasks.length" class="task-grid">
+              <article v-for="row in group.tasks" :key="row.id" class="task-card">
+                <div class="task-card__head">
+                  <div>
+                    <div class="task-card__title">{{ row.name }}</div>
+                    <div class="task-card__meta">{{ row.desc || '暂无备注' }}</div>
+                  </div>
+                  <div class="task-card__actions">
+                    <el-button
+                      circle
+                      class="shrink-0"
+                      :icon="Edit"
+                      @click="handleEdit(row)"
+                      title="编辑"
+                    />
+                    <el-button
+                      circle
+                      class="shrink-0"
+                      :icon="DocumentCopy"
+                      @click="handleCopy(row)"
+                      title="复制"
+                    />
+                    <el-button
+                      circle
+                      class="shrink-0"
+                      :icon="Promotion"
+                      @click="handlePublish(row)"
+                      title="发布"
+                    />
+                    <el-button
+                      circle
+                      class="shrink-0"
+                      type="danger"
+                      :icon="Delete"
+                      @click="handleDelete(row)"
+                      title="删除"
+                    />
+                  </div>
+                </div>
+                <div class="task-card__body">
+                  <div class="task-field">
+                    <span class="task-field__label">本地项目</span>
+                    <span class="task-field__value">{{ row.project_name || '-' }}</span>
+                  </div>
+                  <div class="task-field">
+                    <span class="task-field__label">目标服务器</span>
+                    <span class="task-field__value">
+                      {{ row.ssh_names.length ? row.ssh_names.join('、') : '-' }}
+                    </span>
+                  </div>
+                  <div class="task-field task-field--full">
+                    <span class="task-field__label">目标路径</span>
+                    <span class="task-field__value">{{ row.remote_path || '-' }}</span>
+                  </div>
+                </div>
+              </article>
+            </section>
+            <div v-else class="task-group__empty">暂无匹配任务</div>
+          </div>
+        </el-collapse-transition>
       </article>
     </section>
 
@@ -192,7 +221,17 @@
 </template>
 
 <script lang="ts" setup>
-import { Delete, Edit, Promotion, Search, Folder, DocumentCopy } from '@element-plus/icons-vue';
+import {
+  ArrowDown,
+  Delete,
+  DocumentCopy,
+  Edit,
+  Expand,
+  Fold,
+  Folder,
+  Promotion,
+  Search,
+} from '@element-plus/icons-vue';
 import {
   getTaskList,
   removeTask,
@@ -203,6 +242,8 @@ import {
   removeTaskGroup,
   saveTaskList,
   addTask,
+  getSettings,
+  updateSettings,
 } from '@/DB/index.db';
 import {
   TaskGroupItemType,
@@ -211,7 +252,7 @@ import {
   TaskItemType,
   sshItemType,
 } from '@/types/index.type';
-import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue';
 import { createDebounce } from '@/utils/timing';
 import { notifyError, notifySuccess, confirmDelete } from '@/utils/feedback';
 import {
@@ -311,6 +352,63 @@ const filteredGroups = computed(() => {
   }
   return groupedTasks.value.filter((group) => group.totalCount > 0 || group.tasks.length > 0);
 });
+
+/**
+ * 任务组折叠状态：持久化在 settings 文档里（属于本地视图偏好，不参与数据导出/备份）。
+ * 用记录表而不是 Set，读写都走响应式对象，避免集合类型带来的响应式边界问题。
+ */
+const collapsedGroups = reactive<Record<string, boolean>>({});
+
+const isGroupCollapsed = (id: string) => !!collapsedGroups[id];
+
+/** 搜索时自动展开有命中的分组，否则用户会以为没搜到 */
+const isGroupBodyVisible = (group: TaskGroupView) =>
+  !isGroupCollapsed(group.id) || (!!search.value && group.tasks.length > 0);
+
+const debounceSaveCollapsed = createDebounce(300);
+
+/** 只落库当前仍存在的分组，避免删除分组后留下越攒越多的历史 id */
+const saveCollapsedGroups = () => {
+  debounceSaveCollapsed(async () => {
+    try {
+      const known = taskGroups.value.map((group) => group.id).concat('ungrouped');
+      await updateSettings({ collapsed_groups: known.filter((id) => collapsedGroups[id]) });
+    } catch {
+      // 视图偏好保存失败不影响使用，静默处理
+    }
+  });
+};
+
+const toggleGroupCollapsed = (id: string) => {
+  collapsedGroups[id] = !collapsedGroups[id];
+  saveCollapsedGroups();
+};
+
+onMounted(async () => {
+  try {
+    const settings = await getSettings();
+    (settings.collapsed_groups || []).forEach((id) => {
+      collapsedGroups[id] = true;
+    });
+  } catch {
+    // 读取失败时保持默认（全部展开）
+  }
+});
+
+/** 可见分组是否全部已折叠：决定全局按钮显示「全部折叠」还是「全部展开」 */
+const allGroupsCollapsed = computed(
+  () =>
+    filteredGroups.value.length > 0 &&
+    filteredGroups.value.every((group) => collapsedGroups[group.id]),
+);
+
+const toggleAllGroups = () => {
+  const next = !allGroupsCollapsed.value;
+  filteredGroups.value.forEach((group) => {
+    collapsedGroups[group.id] = next;
+  });
+  saveCollapsedGroups();
+};
 
 const debounceSearch = createDebounce(300);
 const triggerSearch = () => {

@@ -3,38 +3,46 @@ import { safeReadDir, safeReadFile } from './utools';
 
 export function detectProjectType(projectPath: string): ProjectType {
   const files = safeReadDir(projectPath);
-  
+
   if (!files || files.length === 0) {
     return 'unknown';
   }
-  
+
   if (files.includes('pom.xml') || files.includes('build.gradle')) {
     return 'java';
   }
-  
+
   if (files.includes('go.mod')) {
     return 'go';
   }
-  
-  if (files.includes('requirements.txt') || files.includes('setup.py') || files.includes('pyproject.toml')) {
+
+  if (
+    files.includes('requirements.txt') ||
+    files.includes('setup.py') ||
+    files.includes('pyproject.toml')
+  ) {
     return 'python';
   }
-  
+
   if (files.includes('package.json')) {
     const packageJsonData = safeReadFile(`${projectPath}/package.json`);
     if (packageJsonData) {
       try {
         const packageJson = JSON.parse(packageJsonData);
         const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-        
-        if (dependencies['vue'] || dependencies['@vue/cli-service'] || dependencies['vite'] && files.includes('vite.config.ts')) {
+
+        if (
+          dependencies['vue'] ||
+          dependencies['@vue/cli-service'] ||
+          (dependencies['vite'] && files.includes('vite.config.ts'))
+        ) {
           return 'vue';
         }
-        
+
         if (dependencies['react'] || dependencies['react-dom'] || dependencies['next']) {
           return 'react';
         }
-        
+
         return 'node';
       } catch {
         return 'node';
@@ -42,7 +50,7 @@ export function detectProjectType(projectPath: string): ProjectType {
     }
     return 'node';
   }
-  
+
   return 'unknown';
 }
 
@@ -72,9 +80,19 @@ export function getProjectTypeColor(type?: ProjectType): string {
   return colors[type || 'unknown'];
 }
 
+/** 项目类型标签的柔和配色（品牌色 + 淡底，避免实心色块抢视觉） */
+export function getProjectTypeStyle(type?: ProjectType) {
+  const color = getProjectTypeColor(type);
+  return {
+    color,
+    backgroundColor: `${color}1a`,
+    borderColor: 'transparent',
+  };
+}
+
 export function openWithEditor(projectPath: string, editor: 'vscode' | 'idea' | 'finder') {
   const services = (window as any).services;
-  
+
   if (editor === 'vscode') {
     const result = services?.openWithVSCode?.(projectPath);
     if (!result || !result.success) {

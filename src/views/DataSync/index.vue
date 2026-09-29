@@ -4,10 +4,10 @@
       <div class="page-title">数据同步</div>
       <div class="page-actions page-actions--inline">
         <el-button @click="handleExport" type="primary" :icon="Download">导出到文件</el-button>
-        <el-button @click="handleImport" type="success" :icon="Upload">从文件导入</el-button>
+        <el-button @click="handleImport" :icon="Upload">从文件导入</el-button>
       </div>
     </header>
-    <div class="page-content">
+    <div class="page-content page-content--plain page-content--scroll">
       <div class="doc-content">
         <el-descriptions title="数据统计" :column="2" border>
           <el-descriptions-item label="项目数量">{{ stats.projects }}</el-descriptions-item>
@@ -51,7 +51,7 @@
               <el-button type="primary" @click="handleGithubUpload" :loading="githubLoading">
                 上传到 GitHub
               </el-button>
-              <el-button type="success" @click="handleGithubDownload" :loading="githubLoading">
+              <el-button @click="handleGithubDownload" :loading="githubLoading">
                 从 GitHub 下载
               </el-button>
               <el-button @click="saveGithubConfig">保存配置</el-button>
@@ -90,7 +90,7 @@
               <el-button type="primary" @click="handleGiteeUpload" :loading="giteeLoading">
                 上传到 Gitee
               </el-button>
-              <el-button type="success" @click="handleGiteeDownload" :loading="giteeLoading">
+              <el-button @click="handleGiteeDownload" :loading="giteeLoading">
                 从 Gitee 下载
               </el-button>
               <el-button @click="saveGiteeConfig">保存配置</el-button>
@@ -134,12 +134,12 @@
                 <li>首次上传会自动创建私有代码片段，记录返回的 Gist ID</li>
                 <li>后续同步时使用相同的 Token 和 Gist ID 即可</li>
               </ol>
-              <p style="color: #e6a23c">
-                <strong>⚠️ 注意：</strong>
+              <p style="color: var(--color-warning)">
+                <strong>注意：</strong>
                 云端同步会覆盖现有数据，请谨慎操作。Token 和配置会保存在本地。
               </p>
-              <p style="color: #67c23a">
-                <strong>🔒 凭据：</strong>
+              <p style="color: var(--color-success)">
+                <strong>凭据：</strong>
                 导出文件中 SSH 密码/私钥口令以密文保存（格式版本 1.1）； 1.0
                 的老备份文件仍可直接导入（按明文处理并自动加密）。密文用插件内置密钥生成，
                 仅能避免口令被直接看到，不构成对拿到插件本体的攻击者的保护。
@@ -629,7 +629,7 @@ onMounted(() => {
     align-items: center;
     font-size: 16px;
     font-weight: 600;
-    color: #303133;
+    color: var(--color-text);
   }
 }
 
@@ -644,7 +644,7 @@ onMounted(() => {
   }
 
   a {
-    color: #409eff;
+    color: var(--color-primary);
     text-decoration: none;
 
     &:hover {

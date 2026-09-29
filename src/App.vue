@@ -15,34 +15,60 @@
       <main class="app-root__content">
         <router-view></router-view>
       </main>
-      <nav class="bottom-nav bottom-nav--pill">
+      <nav class="bottom-nav bottom-nav--pill" aria-label="主导航">
         <div class="bottom-nav__track" :style="{ '--nav-index': activeIndex }">
-          <div class="bottom-nav__indicator"></div>
-          <div
+          <div class="bottom-nav__indicator" aria-hidden="true"></div>
+          <button
             v-for="item in navItems"
             :key="item.name"
+            type="button"
             class="bottom-nav__item"
-            :class="isActive(item.name)"
+            :class="{ 'bottom-nav__item--active': isActiveName(item.name) }"
+            :aria-current="isActiveName(item.name) ? 'page' : undefined"
             @click="goTo(item.name)"
-            role="button"
-            tabindex="0"
           >
+            <el-icon aria-hidden="true"><component :is="item.icon" /></el-icon>
             <span>{{ item.label }}</span>
-          </div>
+          </button>
         </div>
       </nav>
       <div class="fab-menu" :class="{ 'fab-menu--open': fabOpen }" ref="fabMenuRef">
-        <button class="fab-menu__main" type="button" @click="toggleFab">
+        <button
+          class="fab-menu__main"
+          type="button"
+          :aria-expanded="fabOpen"
+          aria-label="更多工具"
+          title="更多工具"
+          @click="toggleFab"
+        >
           <el-icon><Operation /></el-icon>
         </button>
         <div class="fab-menu__items">
-          <button class="fab-menu__item" type="button" @click="goToDoc" title="使用文档">
+          <button
+            class="fab-menu__item"
+            type="button"
+            @click="goToDoc"
+            title="使用文档"
+            aria-label="使用文档"
+          >
             <el-icon><Document /></el-icon>
           </button>
-          <button class="fab-menu__item" type="button" @click="goToSettings" title="设置">
+          <button
+            class="fab-menu__item"
+            type="button"
+            @click="goToSettings"
+            title="设置"
+            aria-label="设置"
+          >
             <el-icon><Setting /></el-icon>
           </button>
-          <button class="fab-menu__item" type="button" @click="goToDataSync" title="数据同步">
+          <button
+            class="fab-menu__item"
+            type="button"
+            @click="goToDataSync"
+            title="数据同步"
+            aria-label="数据同步"
+          >
             <el-icon><Refresh /></el-icon>
           </button>
         </div>
@@ -54,18 +80,28 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Operation, Setting, Refresh, Document } from '@element-plus/icons-vue';
+import {
+  Operation,
+  Setting,
+  Refresh,
+  Document,
+  HomeFilled,
+  Folder,
+  Monitor,
+  Tools,
+  FolderOpened,
+} from '@element-plus/icons-vue';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 
 const router = useRouter();
 const route = useRoute();
 
 const navItems = [
-  { name: 'Home', label: '首页' },
-  { name: 'Project', label: '项目管理' },
-  { name: 'SSh', label: '远程管理' },
-  { name: 'Command', label: '指令管理' },
-  { name: 'Remote', label: '远程目录' },
+  { name: 'Home', label: '首页', icon: HomeFilled },
+  { name: 'Project', label: '项目管理', icon: Folder },
+  { name: 'SSh', label: '远程管理', icon: Monitor },
+  { name: 'Command', label: '指令管理', icon: Tools },
+  { name: 'Remote', label: '远程目录', icon: FolderOpened },
 ];
 
 const goTo = (name: string) => {
@@ -73,7 +109,7 @@ const goTo = (name: string) => {
 };
 
 const activeName = computed(() => route.name);
-const isActive = (name: string) => (activeName.value === name ? 'bottom-nav__item--active' : '');
+const isActiveName = (name: string) => activeName.value === name;
 const activeIndex = computed(() => {
   const index = navItems.findIndex((item) => item.name === activeName.value);
   return index === -1 ? 0 : index;

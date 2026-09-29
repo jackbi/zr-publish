@@ -29,10 +29,7 @@
         <el-input v-model="formData.name" placeholder="请输入项目名称" />
       </el-form-item>
       <el-form-item label="项目类型" v-if="formData.project_type">
-        <el-tag
-          :color="getProjectTypeColor(formData.project_type)"
-          style="border: none; color: white"
-        >
+        <el-tag :style="getProjectTypeStyle(formData.project_type)">
           {{ getProjectTypeLabel(formData.project_type) }}
         </el-tag>
       </el-form-item>
@@ -63,7 +60,7 @@ import { addProject, updateProject } from '@/DB/index.db';
 import { notifyError } from '@/utils/feedback';
 import { useEntityDialog } from '@/utils/entity-dialog';
 import { safeOpenDialog, safeReadFile } from '@/utils/utools';
-import { detectProjectType, getProjectTypeLabel, getProjectTypeColor } from '@/utils/project';
+import { detectProjectType, getProjectTypeLabel, getProjectTypeStyle } from '@/utils/project';
 
 const emit = defineEmits<{ success: [payload: ProjectItemType] }>();
 

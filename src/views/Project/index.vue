@@ -14,7 +14,7 @@
       <div class="page-title">项目管理</div>
       <div class="page-actions page-actions--inline">
         <el-input
-          class="search-input w-[220px]"
+          class="search-input"
           type="text"
           v-model="searchInput"
           placeholder="搜索项目名称/备注"
@@ -24,29 +24,31 @@
           @input="triggerSearch"
           @clear="triggerSearch"
         ></el-input>
-        <el-button @click="refreshAllGit" type="success" :icon="Refresh" :loading="refreshingAll">
+        <el-button @click="refreshAllGit" :icon="Refresh" :loading="refreshingAll">
           刷新所有 Git 状态
         </el-button>
-        <el-button @click="importProject" type="primary">导入项目</el-button>
+        <el-button @click="importProject">导入项目</el-button>
         <el-button @click="addProjectItem" type="primary">新增项目</el-button>
       </div>
     </header>
     <div class="page-content">
       <el-table :data="filterTableData" style="width: 100%" border height="100%">
         <el-table-column prop="name" label="项目名称" min-width="120" />
-        <el-table-column prop="path" show-overflow-tooltip label="项目路径" min-width="120" />
-        <el-table-column label="项目类型" width="100">
+        <el-table-column
+          prop="path"
+          show-overflow-tooltip
+          label="项目路径"
+          min-width="160"
+          class-name="cell-mono"
+        />
+        <el-table-column label="项目类型" width="84">
           <template #default="{ row }">
-            <el-tag
-              :color="getProjectTypeColor(row.project_type)"
-              style="border: none; color: white"
-              size="small"
-            >
+            <el-tag :style="getProjectTypeStyle(row.project_type)" size="small">
               {{ getProjectTypeLabel(row.project_type) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="Git 分支" width="180" show-overflow-tooltip>
+        <el-table-column label="Git 分支" width="132" show-overflow-tooltip>
           <template #default="{ row }">
             <div v-if="row.git_loading" class="git-loading">
               <el-skeleton :rows="1" animated />
@@ -57,20 +59,22 @@
               style="display: flex; align-items: center; gap: 4px"
             >
               <el-icon style="margin-right: 4px"><BranchesOutlined /></el-icon>
-              <span>{{ row.git_info.branch || '-' }}</span>
+              <span class="mono">{{ row.git_info.branch || '-' }}</span>
               <el-tooltip
                 v-if="row.uncommitted_count > 0"
                 effect="dark"
                 :content="`${row.uncommitted_count} 个未提交的更改`"
                 placement="top"
               >
-                <el-icon style="color: #e6a23c; margin-left: 4px"><WarningFilled /></el-icon>
+                <el-icon style="color: var(--color-warning); margin-left: 4px">
+                  <WarningFilled />
+                </el-icon>
               </el-tooltip>
             </div>
-            <span v-else style="color: #909399">-</span>
+            <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="代码状态" min-width="120">
+        <el-table-column label="代码状态" min-width="104">
           <template #default="{ row }">
             <div v-if="row.git_loading" class="git-loading">
               <el-skeleton :rows="1" animated />
@@ -84,24 +88,27 @@
               >
                 {{ getGitStatusText(row.git_info) }}
               </el-tag>
-              <span v-else style="color: #909399">-</span>
+              <span v-else class="text-muted">-</span>
             </div>
           </template>
         </el-table-column>
         <!-- <el-table-column prop="package_name" label="打包后文件名" width="120" /> -->
-        <el-table-column prop="version" label="项目版本" width="100" />
-        <el-table-column prop="desc" label="备注" min-width="100" />
-        <el-table-column label="操作" fixed="right" width="150">
+        <el-table-column prop="version" label="项目版本" width="92" class-name="cell-num" />
+        <el-table-column prop="desc" label="备注" min-width="96" show-overflow-tooltip />
+        <el-table-column
+          label="操作"
+          fixed="right"
+          width="160"
+          align="center"
+          class-name="cell-actions"
+        >
           <template #default="{ row }">
             <el-dropdown trigger="click" @command="(cmd) => handleOpenCommand(cmd, row)">
               <el-button
                 text
-                type="primary"
-                style="padding: 0"
                 :icon="FolderOpened"
-                size="default"
                 title="打开项目"
-                class="mr-[8px]"
+                aria-label="打开项目"
               ></el-button>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -197,7 +204,7 @@ import { safeReadDir, safeReadFile, safeOpenDialog } from '@/utils/utools';
 import {
   detectProjectType,
   getProjectTypeLabel,
-  getProjectTypeColor,
+  getProjectTypeStyle,
   openWithEditor,
 } from '@/utils/project';
 import { gitWorkerQueue } from '@/utils/git-worker';
