@@ -93,7 +93,13 @@
           </template>
         </el-table-column>
         <!-- <el-table-column prop="package_name" label="打包后文件名" width="120" /> -->
-        <el-table-column prop="version" label="项目版本" width="92" class-name="cell-num" />
+        <el-table-column
+          prop="version"
+          label="项目版本"
+          width="106"
+          show-overflow-tooltip
+          class-name="cell-num"
+        />
         <el-table-column prop="desc" label="备注" min-width="96" show-overflow-tooltip />
         <el-table-column
           label="操作"

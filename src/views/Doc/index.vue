@@ -316,16 +316,28 @@
               <h3>如何添加项目？</h3>
               <ol>
                 <li>进入「项目管理」页面</li>
-                <li>点击右上角「新增」按钮</li>
+                <li>点击右上角「新增项目」按钮</li>
                 <li>填写项目名称和本地路径</li>
                 <li>系统会自动检测项目类型和版本</li>
                 <li>保存后可在列表中看到项目信息</li>
               </ol>
+              <figure class="doc-figure">
+                <el-image
+                  class="doc-figure__img"
+                  :src="projectListImg"
+                  :preview-src-list="[projectListImg]"
+                  :initial-index="0"
+                  preview-teleported
+                  fit="contain"
+                  alt="项目管理列表"
+                />
+                <figcaption>项目管理：路径、类型识别、Git 状态与操作按钮</figcaption>
+              </figure>
 
               <h3>如何导入多个项目？</h3>
               <ol>
                 <li>进入「项目管理」页面</li>
-                <li>点击右上角「导入」按钮</li>
+                <li>点击右上角「导入项目」按钮</li>
                 <li>选择包含多个项目的父目录</li>
                 <li>系统会扫描该目录下所有子目录</li>
                 <li>自动识别并导入所有项目</li>
@@ -343,10 +355,9 @@
               <h3>如何通过终端管理 Git？</h3>
               <ol>
                 <li>在项目列表中找到目标项目</li>
-                <li>点击「操作」下拉菜单</li>
-                <li>选择「终端打开」</li>
+                <li>点击该行「操作」列的第一个图标（在终端中打开项目）</li>
                 <li>
-                  在打开的终端中执行 Git 命令：
+                  终端会自动定位到项目目录，在其中执行 Git 命令：
                   <ul>
                     <li>
                       <code>git pull</code>
@@ -366,8 +377,20 @@
                     </li>
                   </ul>
                 </li>
-                <li>完成后返回插件，点击刷新查看最新状态</li>
+                <li>完成后返回插件，点击同一行的刷新图标查看最新状态</li>
               </ol>
+              <figure class="doc-figure">
+                <el-image
+                  class="doc-figure__img"
+                  :src="settingsImg"
+                  :preview-src-list="[settingsImg]"
+                  :initial-index="0"
+                  preview-teleported
+                  fit="contain"
+                  alt="设置页的终端检测"
+                />
+                <figcaption>「设置」页可查看检测到的终端并指定默认终端</figcaption>
+              </figure>
 
               <h3>如何创建发布任务？</h3>
               <ol>
@@ -389,6 +412,20 @@
                 </li>
                 <li>保存任务</li>
               </ol>
+              <figure class="doc-figure">
+                <el-image
+                  class="doc-figure__img"
+                  :src="taskListImg"
+                  :preview-src-list="[taskListImg]"
+                  :initial-index="0"
+                  preview-teleported
+                  fit="contain"
+                  alt="任务管理列表"
+                />
+                <figcaption>
+                  任务管理：按任务组展示，卡片上可直接编辑 / 复制 / 发布 / 删除
+                </figcaption>
+              </figure>
 
               <h3>如何批量发布任务组？</h3>
               <ol>
@@ -407,8 +444,8 @@
                   ：
                   <ul>
                     <li>点击右下角 FAB 菜单的「数据同步」按钮</li>
-                    <li>点击「导出数据」</li>
-                    <li>将 JSON 文件保存到云盘或 U 盘</li>
+                    <li>点击右上角「导出到文件」</li>
+                    <li>将导出的 JSON 文件保存到云盘或 U 盘</li>
                   </ul>
                 </li>
                 <li>
@@ -416,12 +453,27 @@
                   ：
                   <ul>
                     <li>打开「数据同步」页面</li>
-                    <li>点击「导入数据」</li>
+                    <li>点击「从文件导入」</li>
                     <li>选择从设备 A 导出的 JSON 文件</li>
                     <li>确认导入，所有配置和任务将被同步</li>
                   </ul>
                 </li>
+                <li>
+                  也可以直接用「云端同步」下的 GitHub Gist / Gitee 代码片段作为中转，无需手动传文件
+                </li>
               </ol>
+              <figure class="doc-figure">
+                <el-image
+                  class="doc-figure__img"
+                  :src="dataSyncImg"
+                  :preview-src-list="[dataSyncImg]"
+                  :initial-index="0"
+                  preview-teleported
+                  fit="contain"
+                  alt="数据同步页面"
+                />
+                <figcaption>数据同步：本地导出 / 导入，以及 GitHub、Gitee 云端同步</figcaption>
+              </figure>
             </div>
           </section>
 
@@ -660,104 +712,27 @@
             <h2>版本历史</h2>
             <div>
               <div class="doc-changelog">
-                <div class="doc-changelog__item">
-                  <div class="doc-changelog__version">v2.1.0</div>
-                  <div class="doc-changelog__date">2026-09-29</div>
+                <div
+                  v-for="entry in changelogEntries"
+                  :key="entry.version"
+                  class="doc-changelog__item"
+                >
+                  <div class="doc-changelog__version">v{{ entry.version }}</div>
+                  <div class="doc-changelog__date">{{ entry.date }}</div>
                   <div class="doc-changelog__content">
-                    <p>
-                      <strong>
-                        本次以「安全修复 + 数据正确性」为主，本地数据无需迁移，覆盖安装即可。
-                      </strong>
-                    </p>
-
-                    <p><strong>安全修复：</strong></p>
-                    <ul>
-                      <li>
-                        git 分支名命令注入（打开任意第三方仓库即可执行本地命令）——
-                        全部改为参数数组调用，不经过 shell
-                      </li>
-                      <li>
-                        远端路径未校验未转义（目标路径填
-                        <code>/</code>
-                        会删除远端根目录）—— 强制绝对路径、非根目录，远端参数统一单引号转义
-                      </li>
-                      <li>单文件上传失败时仍上报「上传成功」—— 异常改为上抛，不再有假成功</li>
-                      <li>
-                        私钥口令被静默清空（编辑一次即丢失，带口令的服务器永远连不上）——
-                        与密码成对加密，并兼容历史明文数据
-                      </li>
-                      <li>打开项目 / 终端时的本地 shell 注入 —— 改为 argv 传参</li>
-                      <li>
-                        发布超时后原生锁不释放，导致后续发布全部失败 —— 超时等底层结束再释放锁
-                      </li>
-                      <li>导出的备份文件不再包含明文口令（格式 1.1，旧版明文备份仍可导入）</li>
-                    </ul>
-
-                    <p><strong>问题修复：</strong></p>
-                    <ul>
-                      <li>远程路径 / 指令「编辑」实际执行「新增」，编辑一次就多一条重复记录</li>
-                      <li>删除、复制、保存失败不再静默；备份导入失败会整体回滚</li>
-                      <li>插件重启后残留的发布队列统一收尾为「已中断」，不会自动续跑</li>
-                      <li>私钥认证的服务器可正确列出远程目录；任务弹窗不再残留上一个任务的数据</li>
-                      <li>首页不再每次进入都重写任务表；项目页 Git 状态不再可能写到别的项目上</li>
-                    </ul>
-
-                    <p><strong>新功能：</strong></p>
-                    <ul>
-                      <li>任务管理支持按任务组折叠 / 展开，工具栏提供「全部折叠 / 全部展开」</li>
-                      <li>折叠状态自动记住；搜索时自动展开有命中的分组</li>
-                    </ul>
-
-                    <p><strong>界面调整：</strong></p>
-                    <ul>
-                      <li>重做配色与排版体系，主色对比度由 2.9:1 提升到 5.17:1（达到 WCAG AA）</li>
-                      <li>表格信息密度提高；命令、路径、IP、分支、版本号等数据改用等宽字体</li>
-                      <li>
-                        修复表格最后两行操作按钮点不动（右下角悬浮菜单的不可见区域拦截了点击）
-                      </li>
-                    </ul>
-
-                    <p><strong>其他改进：</strong></p>
-                    <ul>
-                      <li>Element Plus 组件按需引入，打包体积减少约 44%</li>
-                      <li>路由改为 hash 模式，消除以 file:// 加载时白屏的风险</li>
-                      <li>指令管理与远程路径管理合并为一套页面，弹窗统一提交逻辑</li>
-                      <li>接入类型检查（vue-tsc，0 error）与格式化脚本</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="doc-changelog__item">
-                  <div class="doc-changelog__version">v2.0.0</div>
-                  <div class="doc-changelog__date">2025-02-14</div>
-                  <div class="doc-changelog__content">
-                    <p><strong>重大更新：</strong></p>
-                    <ul>
-                      <li>新增项目管理功能（支持导入、类型识别）</li>
-                      <li>新增 Git 状态展示（只读模式）</li>
-                      <li>新增数据同步功能（导出/导入）</li>
-                      <li>新增任务组管理（批量发布）</li>
-                      <li>新增终端自动检测（支持 10+ 终端）</li>
-                      <li>异步队列优化（Git 信息加载提速 50-100 倍）</li>
-                      <li>Git 信息缓存（瞬间加载）</li>
-                      <li>UI 全面重构（卡片式布局）</li>
-                      <li>密码加密存储（AES）</li>
-                      <li>移除 Git 操作功能（改为只读展示）</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="doc-changelog__item">
-                  <div class="doc-changelog__version">v1.0.0</div>
-                  <div class="doc-changelog__date">2025-02-11</div>
-                  <div class="doc-changelog__content">
-                    <p><strong>初始版本：</strong></p>
-                    <ul>
-                      <li>基础发布功能</li>
-                      <li>SSH 管理</li>
-                      <li>指令管理</li>
-                      <li>远程路径管理</li>
-                    </ul>
+                    <p v-if="entry.intro" v-html="renderInline(entry.intro)"></p>
+                    <template v-for="(section, index) in entry.sections" :key="index">
+                      <p v-if="section.title">
+                        <strong>{{ section.title }}：</strong>
+                      </p>
+                      <ul>
+                        <li
+                          v-for="(item, itemIndex) in section.items"
+                          :key="itemIndex"
+                          v-html="renderInline(item)"
+                        ></li>
+                      </ul>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -786,6 +761,11 @@
 
 <script lang="ts" setup>
 import { Files, FolderOpened, Lightning, Promotion, Refresh } from '@element-plus/icons-vue';
+import { changelogEntries, renderInline } from '@/utils/changelog';
+import projectListImg from '@/assets/docs/project-list.png';
+import taskListImg from '@/assets/docs/task-list.png';
+import dataSyncImg from '@/assets/docs/data-sync.png';
+import settingsImg from '@/assets/docs/settings.png';
 // 纯展示页面，无需逻辑
 </script>
 
