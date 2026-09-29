@@ -20,6 +20,9 @@ dist-ssr
 .pnpm-store
 .tmp-verify
 .market-shots
+
+# 离线安装包改走 GitHub Release 附件，不再入库
+package/*.upxs
 .agents
 .DS_Store
 *.suo
