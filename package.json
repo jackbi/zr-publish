@@ -5,7 +5,8 @@
     "build": "vite build",
     "typecheck": "vue-tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "release:notes": "node scripts/release-notes.mjs"
   },
   "dependencies": {
     "element-plus": "^2.13.1",
