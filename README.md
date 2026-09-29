@@ -1,16 +1,10 @@
-<!--
- * @Description: 项目说明
- * @Author: wenbin
- * @FilePath: /zr-publish/README.md
- * Copyright (C) 2025 wenbin. All rights reserved.
--->
 <div align="center">
 
 # ZR-Publish
 
 **把本地文件发布到远程服务器 —— 面向没有 Jenkins / CI-CD 的轻量发布场景**
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE) [![uTools](https://img.shields.io/badge/uTools-plugin-3b82f6.svg)](https://www.u-tools.cn/) [![Vue](https://img.shields.io/badge/Vue-3-42b883.svg)](https://vuejs.org/) [![Vite](https://img.shields.io/badge/Vite-7-646cff.svg)](https://vite.dev/) [![Element Plus](https://img.shields.io/badge/Element%20Plus-2-409eff.svg)](https://element-plus.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![uTools](https://img.shields.io/badge/uTools-plugin-3b82f6.svg)](https://www.u-tools.cn/) [![Vue](https://img.shields.io/badge/Vue-3-42b883.svg)](https://vuejs.org/) [![Vite](https://img.shields.io/badge/Vite-7-646cff.svg)](https://vite.dev/) [![Element Plus](https://img.shields.io/badge/Element%20Plus-2-409eff.svg)](https://element-plus.org/)
 
 </div>
 
@@ -240,4 +234,6 @@ pnpm dev     # 启动 Vite 开发服务器，默认 http://localhost:3020
 
 ## 许可证
 
-[Apache License 2.0](LICENSE) © 2025 wenbin
+本项目基于 [MIT 许可证](LICENSE) 开源，版权归 wenbin 所有（Copyright © 2025 wenbin）。
+
+你可以自由使用、修改、分发本项目（包括商用），只需保留版权声明与许可证文本；软件按“现状”提供，不附带任何担保。
