@@ -16,9 +16,20 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 .idea
+.codegraph
+.pnpm-store
+.tmp-verify
+.agents
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# pnpm 本地 store（本机沙箱安装时产生）
+.pnpm-store
+
+# unplugin 自动生成的类型声明（装 typescript 后才会生成）
+auto-imports.d.ts
+components.d.ts
