@@ -29,7 +29,12 @@ const detectAvailableTerminals = async () => {
   if (platform === 'darwin') {
     const macTerminals = [
       { type: 'Tabby', name: 'Tabby', command: 'Tabby', path: '/Applications/Tabby.app' },
-      { type: 'Terminal', name: 'Terminal', command: 'Terminal', path: '/System/Applications/Utilities/Terminal.app' },
+      {
+        type: 'Terminal',
+        name: 'Terminal',
+        command: 'Terminal',
+        path: '/System/Applications/Utilities/Terminal.app',
+      },
       { type: 'iTerm', name: 'iTerm2', command: 'iTerm', path: '/Applications/iTerm.app' },
       { type: 'Warp', name: 'Warp', command: 'Warp', path: '/Applications/Warp.app' },
     ];

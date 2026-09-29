@@ -9,7 +9,7 @@ import { getDoc, getDocSync, readList, writeDbList, DbDoc } from './helpers';
  * @LastEditors: wenbin
  * @LastEditTime: 2025-03-03 17:25:17
  * @FilePath: /zr-publish/src/DB/remote.db.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 export const remoteDoc: DbDoc = {
   _id: 'zr-publish/remote',

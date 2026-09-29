@@ -86,7 +86,9 @@ async function uploadViaSftp(remoteData, serverConfig, onProcess = noop) {
 
     if (remoteData.is_save || remoteData.is_save === undefined) {
       const backupPath = `${remoteFolder}_backup_${Date.now()}.zip`;
-      const saveResult = await ssh.execCommand(`zip -r ${quote(backupPath)} ${quote(remoteFolder)}`);
+      const saveResult = await ssh.execCommand(
+        `zip -r ${quote(backupPath)} ${quote(remoteFolder)}`,
+      );
       if (saveResult.code !== 0) {
         onProcess(`备份失败: ${saveResult.stderr || saveResult.stdout}`);
         throw new Error(`备份失败: ${saveResult.stderr || 'zip 执行失败'}`);
@@ -131,9 +133,7 @@ async function uploadViaSftp(remoteData, serverConfig, onProcess = noop) {
           onProcess('Restored excluded files/folders');
           await ssh.execCommand(`rm -rf ${quote(tempDir)}`);
         } else {
-          onProcess(
-            `Warning: 排除项恢复失败，文件仍保留在 ${tempDir}: ${restoreResult.stderr}`,
-          );
+          onProcess(`Warning: 排除项恢复失败，文件仍保留在 ${tempDir}: ${restoreResult.stderr}`);
         }
       }
     }
@@ -274,9 +274,9 @@ const listRemoteDirectory = async (serverConfig, remotePath) => {
       throw new Error(`Failed to list directory: ${result.stderr || 'Directory not found'}`);
     }
 
-    const items = result.stdout.split('\n').filter(item => item.trim());
+    const items = result.stdout.split('\n').filter((item) => item.trim());
 
-    return items.map(item => {
+    return items.map((item) => {
       const isDirectory = item.endsWith('/');
       const name = isDirectory ? item.slice(0, -1) : item.replace(/[*@|=]$/, '');
       return {

@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2026-02-02 10:59:55
  * @FilePath: /zr-publish/src/views/Home/index.vue
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
 -->
 <template>
   <div class="home-page">

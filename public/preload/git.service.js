@@ -62,7 +62,12 @@ const getGitInfo = (projectPath) => {
         runGit(['fetch', '--quiet'], projectPath, { timeout: 5000 });
 
         const revList = runGit(
-          ['rev-list', '--left-right', '--count', `${currentBranch}...${remoteName}/${currentBranch}`],
+          [
+            'rev-list',
+            '--left-right',
+            '--count',
+            `${currentBranch}...${remoteName}/${currentBranch}`,
+          ],
           projectPath,
         );
 

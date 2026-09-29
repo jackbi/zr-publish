@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-13 17:36:29
  * @FilePath: /zr-publish/src/DB/task.db.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 import { TaskItemType } from '@/types/index.type';
 import { cloneDeep } from 'lodash-es';

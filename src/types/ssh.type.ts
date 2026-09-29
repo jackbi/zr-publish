@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-12 16:46:25
  * @FilePath: /zr-publish/src/types/ssh.type.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 
 export type SSHAuthType = 'password' | 'privateKey';

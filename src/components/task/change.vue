@@ -39,11 +39,6 @@
           </template>
         </el-input>
       </el-form-item>
-      <!-- <el-form-item label="上传前执行命令" v-if="formData.local_path" prop="local_command">
-        <el-select v-model="formData.local_command" clearable placeholder="上传前执行命令">
-          <el-option v-for="item in packageScripts" :key="item" :label="item" :value="item" />
-        </el-select>
-      </el-form-item> -->
       <el-form-item label="选择目标服务器" prop="ssh_ids">
         <el-select v-model="formData.ssh_ids" multiple collapse-tags placeholder="请选择服务器">
           <el-option v-for="item in sshList" :key="item.id" :label="item.host" :value="item.id" />
@@ -199,7 +194,6 @@ const {
     remote_path: '',
     local_path: '',
     remote_command: '',
-    local_command: '',
     desc: '',
     is_removed: true,
     is_save: true,

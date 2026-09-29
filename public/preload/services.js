@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-03-03 17:09:07
  * @FilePath: /zr-publish/public/preload/services.js
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 const fsService = require('./fs.service');
 const sshService = require('./ssh.service');

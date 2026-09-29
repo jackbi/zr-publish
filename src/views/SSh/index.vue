@@ -31,7 +31,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="desc" label="描述" min-width="100" show-overflow-tooltip />
-        <el-table-column label="操作" fixed="right" width="160" align="center" class-name="cell-actions">
+        <el-table-column
+          label="操作"
+          fixed="right"
+          width="160"
+          align="center"
+          class-name="cell-actions"
+        >
           <template #default="{ row }">
             <el-button
               text

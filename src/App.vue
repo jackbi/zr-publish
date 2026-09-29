@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-14 16:43:56
  * @FilePath: /zr-publish/src/App.vue
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
 -->
 <template>
   <!-- 不再 app.use(ElementPlus)（组件 JS 已按需引入），语言包通过 ConfigProvider 提供 -->

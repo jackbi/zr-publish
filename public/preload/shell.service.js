@@ -143,7 +143,9 @@ const findWindowsTabby = () => {
   const candidates = [
     'C:\\Program Files\\Tabby\\Tabby.exe',
     'C:\\Program Files (x86)\\Tabby\\Tabby.exe',
-    process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Programs\\Tabby\\Tabby.exe') : '',
+    process.env.LOCALAPPDATA
+      ? path.join(process.env.LOCALAPPDATA, 'Programs\\Tabby\\Tabby.exe')
+      : '',
   ].filter(Boolean);
 
   return candidates.find((candidate) => fs.existsSync(candidate)) || '';
@@ -171,7 +173,11 @@ const openInFileManager = (filePath) => {
 const openWithVSCode = (filePath) => {
   try {
     if (!hasCommand('code')) {
-      return fail(new Error('未找到 code 命令，请在 VS Code 中执行 “Shell Command: Install \'code\' command in PATH”'));
+      return fail(
+        new Error(
+          "未找到 code 命令，请在 VS Code 中执行 “Shell Command: Install 'code' command in PATH”",
+        ),
+      );
     }
     launch('code', [filePath]);
     return ok();
@@ -228,11 +234,21 @@ const openInTerminal = (workingDir, terminalType) => {
       } else if (terminalType === 'powershell') {
         launch(
           'cmd',
-          ['/c', 'start', '', 'powershell', '-NoExit', '-Command', `Set-Location -LiteralPath ${powerShellQuote(workingDir)}`],
+          [
+            '/c',
+            'start',
+            '',
+            'powershell',
+            '-NoExit',
+            '-Command',
+            `Set-Location -LiteralPath ${powerShellQuote(workingDir)}`,
+          ],
           { cwd: workingDir },
         );
       } else {
-        launch('cmd', ['/c', 'start', '', 'cmd', '/k', `cd /d "${workingDir}"`], { cwd: workingDir });
+        launch('cmd', ['/c', 'start', '', 'cmd', '/k', `cd /d "${workingDir}"`], {
+          cwd: workingDir,
+        });
       }
     } else if (terminalType === 'Tabby') {
       launch('tabby', ['open'], { cwd: workingDir });

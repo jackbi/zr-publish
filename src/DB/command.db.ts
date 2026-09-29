@@ -9,7 +9,7 @@ import { getDoc, getDocSync, readList, writeDbList, DbDoc } from './helpers';
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-20 16:50:54
  * @FilePath: /zr-publish/src/DB/command.db.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 export const commandDoc: DbDoc = {
   _id: 'zr-publish/command',

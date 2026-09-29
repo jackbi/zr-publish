@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-12 16:07:07
  * @FilePath: /zr-publish/src/DB/project.db.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 import { ProjectItemType } from '@/types/index.type';
 import { cloneDeep } from 'lodash-es';

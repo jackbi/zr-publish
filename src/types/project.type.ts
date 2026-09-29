@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-12 14:11:43
  * @FilePath: /zr-publish/src/types/project.type.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 export type ProjectType = 'vue' | 'react' | 'node' | 'java' | 'python' | 'go' | 'unknown';
 

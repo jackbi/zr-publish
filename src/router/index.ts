@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-03-03 17:31:17
  * @FilePath: /zr-publish/src/router/index.ts
- * Copyright (C) 2023 wenbin. All rights reserved.
+ * Copyright (c) 2023 wenbin
  */
 /*
  * @Description:
@@ -16,7 +16,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2023-10-08 09:30:14
  * @FilePath: /new-energy-view/src/router/index.ts
- * Copyright (C) 2022 wenbin. All rights reserved.
+ * Copyright (c) 2022 wenbin
  */
 import { createRouter, createWebHashHistory } from 'vue-router';
 

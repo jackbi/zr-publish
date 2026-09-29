@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-03-03 17:28:17
  * @FilePath: /zr-publish/src/DB/index.db.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 export * from './project.db';
 export * from './ssh.db';

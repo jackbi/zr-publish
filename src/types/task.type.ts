@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-03-03 15:22:45
  * @FilePath: /zr-publish/src/types/task.type.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 export interface TaskItemType {
   id: string;
@@ -19,7 +19,6 @@ export interface TaskItemType {
   remote_path: string;
   local_path: string;
   remote_command?: string;
-  local_command?: string;
   desc?: string;
   is_removed?: boolean;
   is_save?: boolean;

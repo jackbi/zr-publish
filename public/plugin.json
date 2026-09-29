@@ -9,11 +9,7 @@
     {
       "code": "Home",
       "explain": "插件首页",
-      "cmds": [
-        "zr",
-        "zrPublish",
-        "zr-publish"
-      ]
+      "cmds": ["zr", "zrPublish", "zr-publish"]
     }
   ]
 }

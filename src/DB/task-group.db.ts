@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2026-02-02 10:20:08
  * @FilePath: /zr-publish/src/DB/task-group.db.ts
- * Copyright (C) 2026 wenbin. All rights reserved.
+ * Copyright (c) 2026 wenbin
  */
 import { TaskGroupItemType } from '@/types/index.type';
 import { cloneDeep } from 'lodash-es';

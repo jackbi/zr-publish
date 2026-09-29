@@ -45,7 +45,7 @@ class GitWorkerQueue {
 
   private async processTask(task: GitTask) {
     try {
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       let result: any;
       switch (task.type) {
@@ -75,9 +75,9 @@ class GitWorkerQueue {
     if (!window.services?.getGitInfo) {
       throw new Error('getGitInfo service not available');
     }
-    
+
     const gitInfo = window.services.getGitInfo(projectPath);
-    
+
     if (!gitInfo || !gitInfo.isGit) {
       return {
         git_info: gitInfo || {

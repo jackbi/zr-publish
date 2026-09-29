@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2026-01-30 11:07:45
  * @FilePath: /zr-publish/src/components/project/change.vue
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
 -->
 <template>
   <el-dialog

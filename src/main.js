@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2026-01-30 17:26:38
  * @FilePath: /zr-publish/src/main.js
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 import { createApp } from 'vue';
 import router from '@/router/index.ts';

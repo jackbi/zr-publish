@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-13 17:15:14
  * @FilePath: /zr-publish/src/types/index.type.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 export * from './project.type';
 export * from './ssh.type';

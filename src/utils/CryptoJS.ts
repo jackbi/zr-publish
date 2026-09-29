@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-12 17:33:37
  * @FilePath: /zr-publish/src/utils/CryptoJS.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 import CryptoJS from 'crypto-js';
 

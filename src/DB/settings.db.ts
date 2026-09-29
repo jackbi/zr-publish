@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2026-02-03 12:00:00
  * @FilePath: /zr-publish/src/DB/settings.db.ts
- * Copyright (C) 2026 wenbin. All rights reserved.
+ * Copyright (c) 2026 wenbin
  */
 import { SettingsItemType } from '@/types/index.type';
 import { readSingle, writeSingle, DbDoc } from './helpers';

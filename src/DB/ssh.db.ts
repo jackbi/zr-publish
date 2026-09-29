@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-12 17:41:16
  * @FilePath: /zr-publish/src/DB/ssh.db.ts
- * Copyright (C) 2025 wenbin. All rights reserved.
+ * Copyright (c) 2025 wenbin
  */
 import { sshItemType } from '@/types/index.type';
 import { cloneDeep } from 'lodash-es';

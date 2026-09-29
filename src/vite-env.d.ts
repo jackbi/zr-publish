@@ -6,7 +6,7 @@
  * @LastEditors: wenbin
  * @LastEditTime: 2025-02-11 16:44:31
  * @FilePath: /zr-publish/src/vite-env.d.ts
- * Copyright (C) 2023 wenbin. All rights reserved.
+ * Copyright (c) 2023 wenbin
  */
 /// <reference types="vite/client" />
 
@@ -40,7 +40,6 @@ type PlainObject = {
 };
 
 type AnyObject<T = Any> = Record<string, T>;
-
 
 type Spread<L, R> = Omit<L, keyof R> & R;
 
