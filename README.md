@@ -241,7 +241,7 @@ pnpm dev     # 启动 Vite 开发服务器，默认 http://localhost:3020
 
 | 微信 | 支付宝 |
 | :-: | :-: |
-| <img src="https://imgbed.hiwenbin.com/file/1789613883856_微信图片_20260917104550_99_31.jpg" alt="微信收款码" width="200"> | <img src="https://imgbed.hiwenbin.com/file/1789613868939_微信图片_20260917104551_100_31.jpg" alt="支付宝收款码" width="200"> |
+| <img src="src/assets/donate/wechat.jpg" alt="微信收款码" width="200"> | <img src="src/assets/donate/alipay.jpg" alt="支付宝收款码" width="200"> |
 
 ## 许可证
 
