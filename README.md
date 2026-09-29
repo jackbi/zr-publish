@@ -229,9 +229,7 @@ pnpm dev     # 启动 Vite 开发服务器，默认 http://localhost:3020
 - **提交信息**：使用中文 conventional commits（如 `fix(ssh): ...`、`feat(ui): ...`），一次提交只做一件事。
 - **提交前**：请确保 `pnpm typecheck` 与 `pnpm build` 通过，并按需执行 `pnpm format`。
 - **用户可见的改动**：请在 `CHANGELOG.md` 追加记录（插件内的版本历史会自动读取）。
-- **仓库**（两处镜像同步）：
-  - GitHub：<https://github.com/jackbi/zr-publish> —— Issue、Release 在这里
-  - CNB：<https://github.com/jackbi/zr-publish>
+- **仓库**：<https://github.com/jackbi/zr-publish> —— Issue、Release 与源码都在这里
 - **反馈**：仓库 Issue，或见插件内「使用文档 → 反馈与支持」。
 
 ## 许可证
