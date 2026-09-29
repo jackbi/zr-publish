@@ -42,7 +42,7 @@ export const removeProject = async (id: string) => {
   const list = await getProjectList();
   const datas = cloneDeep(list);
   const index = datas.findIndex((item) => item.id === id);
-  if (index === -1) return false;
+  if (index === -1) throw new Error('该项目已不存在，请刷新后重试');
   datas.splice(index, 1);
   await writeDbList(projectDoc, datas);
   return true;
@@ -53,7 +53,7 @@ export const removeProject = async (id: string) => {
  * @param {ProjectItemType} project
  * @return {*}
  */
-export const addProject: (project: ProjectItemType) => Promise<ProjectItemType | Error> = async (
+export const addProject: (project: ProjectItemType) => Promise<ProjectItemType> = async (
   project: ProjectItemType,
 ) => {
   const params = cloneDeep(project);
@@ -66,11 +66,11 @@ export const addProject: (project: ProjectItemType) => Promise<ProjectItemType |
 };
 
 /**
- * @description: 新增项目
+ * @description: 批量新增项目
  * @param {ProjectItemType} project
  * @return {*}
  */
-export const batchAddProject: (project: ProjectItemType[]) => Promise<boolean | Error> = async (
+export const batchAddProject: (project: ProjectItemType[]) => Promise<boolean> = async (
   projects: ProjectItemType[],
 ) => {
   const params = cloneDeep(projects);
@@ -88,13 +88,13 @@ export const batchAddProject: (project: ProjectItemType[]) => Promise<boolean | 
  * @param {ProjectItemType} project
  * @return {*}
  */
-export const updateProject: (project: ProjectItemType) => Promise<ProjectItemType | Error> = async (
+export const updateProject: (project: ProjectItemType) => Promise<ProjectItemType> = async (
   project: ProjectItemType,
 ) => {
   const list = await getProjectList();
   const datas = cloneDeep(list);
   const index = datas.findIndex((item) => item.id === project.id);
-  if (index === -1) return new Error('项目不存在');
+  if (index === -1) throw new Error('该项目已不存在，请刷新后重试');
   datas[index] = project;
   await writeDbList(projectDoc, datas);
   return project;
@@ -105,14 +105,14 @@ export const batchUpdateProjects: (projects: ProjectItemType[]) => Promise<boole
 ) => {
   const list = await getProjectList();
   const datas = cloneDeep(list);
-  
+
   projects.forEach((project) => {
     const index = datas.findIndex((item) => item.id === project.id);
     if (index !== -1) {
       datas[index] = project;
     }
   });
-  
+
   await writeDbList(projectDoc, datas);
   return true;
 };

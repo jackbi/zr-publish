@@ -1,0 +1,8 @@
+node_modules
+dist
+.pnpm-store
+pnpm-lock.yaml
+package
+public/preload/node_modules
+.codegraph
+.agents

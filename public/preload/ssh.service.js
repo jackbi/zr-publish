@@ -1,8 +1,15 @@
-const { testConnect, publish, listRemoteDirectory, executeRemoteCommand } = require('./ssh');
+const {
+  testConnect,
+  publish,
+  listRemoteDirectory,
+  resetPublishState,
+  isPublishBusy,
+} = require('./ssh');
 
 module.exports = {
   testConnect,
   publish,
   listRemoteDirectory,
-  executeRemoteCommand,
+  resetPublishState,
+  isPublishBusy,
 };

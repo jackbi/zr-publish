@@ -4,10 +4,10 @@
     v-model="dialogVisible"
     :title="id ? '编辑SSH链接' : '新增SSH链接'"
     width="60%"
-    :before-close="cancel"
+    :before-close="beforeClose"
     draggable
   >
-    <el-form ref="formRef" :model="formData" :rules="formRules" label-width="auto" status-icon>
+    <el-form :ref="setFormRef" :model="formData" :rules="formRules" label-width="auto" status-icon>
       <el-form-item label="名称" prop="name">
         <el-input v-model="formData.name" placeholder="请输入名称" />
       </el-form-item>
@@ -37,32 +37,54 @@
         </el-input>
       </el-form-item>
       <el-form-item v-if="formData.auth_type === 'privateKey'" label="私钥密码" prop="passphrase">
-        <el-input v-model="formData.passphrase" type="password" placeholder="如果私钥有密码请输入" show-password />
+        <el-input
+          v-model="formData.passphrase"
+          type="password"
+          placeholder="如果私钥有密码请输入"
+          show-password
+        />
       </el-form-item>
       <el-form-item label="描述" prop="desc">
-        <el-input v-model="formData.desc" type="textarea" placeholder="备注信息（可选）" :rows="2" />
+        <el-input
+          v-model="formData.desc"
+          type="textarea"
+          placeholder="备注信息（可选）"
+          :rows="2"
+        />
       </el-form-item>
     </el-form>
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="cancel">取消</el-button>
-        <el-button @click="confirm" type="primary">确定</el-button>
+        <el-button @click="closeDialog">取消</el-button>
+        <el-button @click="confirm" type="primary" :loading="submitting">确定</el-button>
       </div>
     </template>
   </el-dialog>
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref, watch } from 'vue';
+import { reactive, watch } from 'vue';
 import { sshItemTypeNoId, sshItemType, SSHAuthType } from '@/types/index.type';
 import { addSsh, updateSsh } from '@/DB/index.db';
-import { notifyError, notifySuccess } from '@/utils/feedback';
-import { useDialogForm } from '@/utils/dialog';
+import { useEntityDialog } from '@/utils/entity-dialog';
 import { FolderOpened } from '@element-plus/icons-vue';
 import { safeOpenDialog } from '@/utils/utools';
 
-const { dialogVisible, id, formData, resetDialog, openDialog } = useDialogForm<sshItemTypeNoId>(
-  () => ({
+const emit = defineEmits<{ success: [payload: sshItemType] }>();
+
+const {
+  dialogVisible,
+  id,
+  submitting,
+  formData,
+  setFormRef,
+  clearValidate,
+  openDialog,
+  closeDialog,
+  beforeClose,
+  confirm,
+} = useEntityDialog<sshItemTypeNoId, sshItemType>({
+  createInitial: () => ({
     name: '',
     host: '',
     port: 22,
@@ -73,10 +95,10 @@ const { dialogVisible, id, formData, resetDialog, openDialog } = useDialogForm<s
     passphrase: '',
     desc: '',
   }),
-);
-const emit = defineEmits(['success']);
-
-const formRef = ref();
+  save: (data, currentId) =>
+    currentId ? updateSsh({ ...data, id: currentId } as sshItemType) : addSsh(data as sshItemType),
+  onSuccess: (saved) => emit('success', saved),
+});
 
 const formRules = reactive({
   host: [
@@ -122,11 +144,7 @@ const formRules = reactive({
   auth_type: [{ required: true, message: '请选择认证方式', trigger: 'change' }],
 });
 
-const cancel = () => {
-  resetDialog();
-};
-
-const init = (datas: sshItemType) => {
+const init = (datas?: sshItemType) => {
   openDialog(datas);
   if (!formData.auth_type) {
     formData.auth_type = 'password';
@@ -137,9 +155,7 @@ const selectPrivateKey = () => {
   const files = safeOpenDialog({
     title: '选择私钥文件',
     properties: ['openFile'],
-    filters: [
-      { name: 'Private Key Files', extensions: ['pem', 'key', 'pub', '*'] },
-    ],
+    filters: [{ name: 'Private Key Files', extensions: ['pem', 'key', 'pub', '*'] }],
   });
   if (files && files.length > 0) {
     formData.private_key = files[0];
@@ -149,31 +165,9 @@ const selectPrivateKey = () => {
 watch(
   () => formData.auth_type,
   () => {
-    formRef.value?.clearValidate(['password', 'private_key']);
+    clearValidate(['password', 'private_key']);
   },
 );
-
-const confirm = () => {
-  formRef.value.validate((valid: boolean) => {
-    if (valid) {
-      let api: () => Promise<sshItemType | Error>;
-      if (id.value) {
-        api = () => updateSsh({ ...formData, id: id.value });
-      } else {
-        api = () => addSsh(formData as sshItemType);
-      }
-      api()
-        .then((res) => {
-          emit('success', res);
-          cancel();
-          notifySuccess();
-        })
-        .catch(() => {
-          notifyError();
-        });
-    }
-  });
-};
 
 defineExpose({
   init,

@@ -17,9 +17,9 @@
           <el-descriptions-item label="任务数量">{{ stats.tasks }}</el-descriptions-item>
           <el-descriptions-item label="任务组数量">{{ stats.taskGroups }}</el-descriptions-item>
         </el-descriptions>
-        
+
         <el-divider content-position="left">云端同步</el-divider>
-        
+
         <el-card class="sync-card">
           <template #header>
             <div class="card-header">
@@ -29,7 +29,7 @@
               </el-tag>
             </div>
           </template>
-          
+
           <el-form :model="githubConfig" label-width="120px" size="default">
             <el-form-item label="Personal Token">
               <el-input
@@ -68,7 +68,7 @@
               </el-tag>
             </div>
           </template>
-          
+
           <el-form :model="giteeConfig" label-width="120px" size="default">
             <el-form-item label="Access Token">
               <el-input
@@ -97,30 +97,53 @@
             </el-form-item>
           </el-form>
         </el-card>
-        
+
         <el-divider />
-        
-        <el-alert
-          title="使用说明"
-          type="info"
-          :closable="false"
-        >
+
+        <el-alert title="使用说明" type="info" :closable="false">
           <template #default>
-            <div style="line-height: 1.8;">
-              <p><strong>本地文件同步：</strong>将所有数据导出为 JSON 文件保存到本地，或从本地文件导入数据。</p>
+            <div style="line-height: 1.8">
+              <p>
+                <strong>本地文件同步：</strong>
+                将所有数据导出为 JSON 文件保存到本地，或从本地文件导入数据。
+              </p>
               <p><strong>GitHub Gist 同步：</strong></p>
-              <ol style="margin: 8px 0; padding-left: 20px;">
-                <li>访问 <a href="#" @click.prevent="openLink('https://github.com/settings/tokens')">GitHub Token 设置</a>，创建 Personal Access Token，勾选 gist 权限</li>
+              <ol style="margin: 8px 0; padding-left: 20px">
+                <li>
+                  访问
+                  <a href="#" @click.prevent="openLink('https://github.com/settings/tokens')">
+                    GitHub Token 设置
+                  </a>
+                  ，创建 Personal Access Token，勾选 gist 权限
+                </li>
                 <li>首次上传会自动创建私密 Gist，记录返回的 Gist ID</li>
                 <li>后续同步时使用相同的 Token 和 Gist ID 即可</li>
               </ol>
               <p><strong>Gitee 代码片段同步：</strong></p>
-              <ol style="margin: 8px 0; padding-left: 20px;">
-                <li>访问 <a href="#" @click.prevent="openLink('https://gitee.com/profile/personal_access_tokens')">Gitee 令牌设置</a>，创建私人令牌，勾选 gist 权限</li>
+              <ol style="margin: 8px 0; padding-left: 20px">
+                <li>
+                  访问
+                  <a
+                    href="#"
+                    @click.prevent="openLink('https://gitee.com/profile/personal_access_tokens')"
+                  >
+                    Gitee 令牌设置
+                  </a>
+                  ，创建私人令牌，勾选 gist 权限
+                </li>
                 <li>首次上传会自动创建私有代码片段，记录返回的 Gist ID</li>
                 <li>后续同步时使用相同的 Token 和 Gist ID 即可</li>
               </ol>
-              <p style="color: #E6A23C;"><strong>⚠️ 注意：</strong>云端同步会覆盖现有数据，请谨慎操作。Token 和配置会保存在本地。</p>
+              <p style="color: #e6a23c">
+                <strong>⚠️ 注意：</strong>
+                云端同步会覆盖现有数据，请谨慎操作。Token 和配置会保存在本地。
+              </p>
+              <p style="color: #67c23a">
+                <strong>🔒 凭据：</strong>
+                导出文件中 SSH 密码/私钥口令以密文保存（格式版本 1.1）； 1.0
+                的老备份文件仍可直接导入（按明文处理并自动加密）。密文用插件内置密钥生成，
+                仅能避免口令被直接看到，不构成对拿到插件本体的攻击者的保护。
+              </p>
             </div>
           </template>
         </el-alert>
@@ -147,22 +170,16 @@ import {
   taskDoc,
   taskGroupDoc,
   writeDbList,
+  runWithRollback,
 } from '@/DB/index.db';
-import { safeOpenDialog, safeSaveDialog, safeWriteFile, safeReadFile, safeShellOpenExternal } from '@/utils/utools';
-import { decrypt, encrypt } from '@/utils/CryptoJS';
-
-interface ExportData {
-  version: string;
-  exportTime: string;
-  data: {
-    projects: any[];
-    ssh: any[];
-    commands: string[];
-    remotes: string[];
-    tasks: any[];
-    taskGroups: any[];
-  };
-}
+import {
+  safeOpenDialog,
+  safeSaveDialog,
+  safeWriteFile,
+  safeReadFile,
+  safeShellOpenExternal,
+} from '@/utils/utools';
+import { buildExportData, parseImportData, type ExportData } from '@/services/data-port';
 
 interface SyncConfig {
   token: string;
@@ -191,6 +208,9 @@ const giteeConfig = ref<SyncConfig>({
 const githubLoading = ref(false);
 const giteeLoading = ref(false);
 
+const isUserCancel = (error: unknown) => error === 'cancel' || error === 'close';
+const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
 // 获取统计数据
 const loadStats = async () => {
   const [projects, ssh, commands, remotes, tasks, taskGroups] = await Promise.all([
@@ -217,7 +237,7 @@ const loadSyncConfigs = () => {
   try {
     const githubConfigStr = window.utools.dbStorage.getItem('sync_config_github');
     const giteeConfigStr = window.utools.dbStorage.getItem('sync_config_gitee');
-    
+
     if (githubConfigStr) {
       githubConfig.value = JSON.parse(githubConfigStr);
     }
@@ -241,7 +261,7 @@ const saveGiteeConfig = () => {
   ElMessage.success('Gitee 配置已保存');
 };
 
-// 获取导出数据
+// 获取导出数据（SSH 凭据以密文形态导出）
 const getExportData = async (): Promise<ExportData> => {
   const [projects, ssh, commands, remotes, tasks, taskGroups] = await Promise.all([
     getProjectList(),
@@ -252,43 +272,37 @@ const getExportData = async (): Promise<ExportData> => {
     getTaskGroupList(),
   ]);
 
-  // 解密 SSH 密码用于导出
-  const decryptedSsh = ssh.map((item) => ({
-    ...item,
-    password: decrypt(item.password),
-  }));
-
-  return {
-    version: '1.0',
-    exportTime: new Date().toISOString(),
-    data: {
-      projects,
-      ssh: decryptedSsh,
-      commands,
-      remotes,
-      tasks,
-      taskGroups,
-    },
-  };
+  return buildExportData({ projects, ssh, commands, remotes, tasks, taskGroups });
 };
 
-// 导入数据
+/**
+ * 导入数据。
+ * 支持 1.0（明文）/ 1.1（内置密钥）/ 1.1 口令加密三种格式；
+ * 口令加密的文件会先询问口令（先校验再确认覆盖，避免口令错了还吓一跳），
+ * 写入过程中任何一步失败都会整体回滚。
+ */
 const importData = async (exportData: ExportData) => {
-  // 加密 SSH 密码
-  const encryptedSsh = (exportData.data.ssh || []).map((item: any) => ({
-    ...item,
-    password: encrypt(item.password),
-  }));
+  const parsed = parseImportData(exportData);
 
-  // 导入数据到数据库
-  await Promise.all([
-    writeDbList(projectDoc, exportData.data.projects || []),
-    writeDbList(sshDoc, encryptedSsh),
-    writeDbList(commandDoc, exportData.data.commands || []),
-    writeDbList(remoteDoc, exportData.data.remotes || []),
-    writeDbList(taskDoc, exportData.data.tasks || []),
-    writeDbList(taskGroupDoc, exportData.data.taskGroups || []),
-  ]);
+  await ElMessageBox.confirm('导入数据将覆盖当前所有数据，此操作不可撤销，是否继续？', '警告', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  });
+
+  await runWithRollback(
+    [projectDoc, sshDoc, commandDoc, remoteDoc, taskDoc, taskGroupDoc],
+    async () => {
+      await Promise.all([
+        writeDbList(projectDoc, parsed.projects),
+        writeDbList(sshDoc, parsed.ssh),
+        writeDbList(commandDoc, parsed.commands),
+        writeDbList(remoteDoc, parsed.remotes),
+        writeDbList(taskDoc, parsed.tasks),
+        writeDbList(taskGroupDoc, parsed.taskGroups),
+      ]);
+    },
+  );
 
   await loadStats();
 };
@@ -327,7 +341,7 @@ const handleGithubUpload = async () => {
     const response = await fetch(url, {
       method,
       headers: {
-        'Authorization': `token ${githubConfig.value.token}`,
+        Authorization: `token ${githubConfig.value.token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(gistData),
@@ -362,7 +376,7 @@ const handleGithubDownload = async () => {
   try {
     const response = await fetch(`https://api.github.com/gists/${githubConfig.value.gistId}`, {
       headers: {
-        'Authorization': `token ${githubConfig.value.token}`,
+        Authorization: `token ${githubConfig.value.token}`,
       },
     });
 
@@ -379,22 +393,12 @@ const handleGithubDownload = async () => {
 
     const exportData: ExportData = JSON.parse(fileContent);
 
-    await ElMessageBox.confirm(
-      '从云端下载数据将覆盖当前所有数据，此操作不可撤销，是否继续？',
-      '警告',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      },
-    );
-
     await importData(exportData);
     ElMessage.success('从 GitHub 下载成功！');
-  } catch (error: any) {
-    if (error !== 'cancel') {
+  } catch (error) {
+    if (!isUserCancel(error)) {
       console.error('GitHub 下载失败:', error);
-      ElMessage.error(`下载失败: ${error.message}`);
+      ElMessage.error(`下载失败: ${messageOf(error)}`);
     }
   } finally {
     githubLoading.value = false;
@@ -472,12 +476,22 @@ const handleGiteeDownload = async () => {
 
   giteeLoading.value = true;
   try {
-    const response = await fetch(
-      `https://gitee.com/api/v5/gists/${giteeConfig.value.gistId}?access_token=${giteeConfig.value.token}`,
-    );
+    // Gitee 官方文档（swagger 5.4.93）只声明 access_token 作为 query/formData 参数，
+    // 并未声明 Authorization 头；但实测 `Authorization: token <pat>` 可用。
+    // 因此优先用请求头（避免 token 出现在 URL 与各级日志里），
+    // 一旦被拒绝就回退到文档写法，保证不会因为平台调整而失效。
+    const gistUrl = `https://gitee.com/api/v5/gists/${giteeConfig.value.gistId}`;
+    let response = await fetch(gistUrl, {
+      headers: { Authorization: `token ${giteeConfig.value.token}` },
+    });
+    if (response.status === 401 || response.status === 403) {
+      response = await fetch(
+        `${gistUrl}?access_token=${encodeURIComponent(giteeConfig.value.token)}`,
+      );
+    }
 
     if (!response.ok) {
-      throw new Error('获取数据失败');
+      throw new Error(`获取数据失败（HTTP ${response.status}）`);
     }
 
     const result = await response.json();
@@ -489,22 +503,12 @@ const handleGiteeDownload = async () => {
 
     const exportData: ExportData = JSON.parse(fileContent);
 
-    await ElMessageBox.confirm(
-      '从云端下载数据将覆盖当前所有数据，此操作不可撤销，是否继续？',
-      '警告',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      },
-    );
-
     await importData(exportData);
     ElMessage.success('从 Gitee 下载成功！');
-  } catch (error: any) {
-    if (error !== 'cancel') {
+  } catch (error) {
+    if (!isUserCancel(error)) {
       console.error('Gitee 下载失败:', error);
-      ElMessage.error(`下载失败: ${error.message}`);
+      ElMessage.error(`下载失败: ${messageOf(error)}`);
     }
   } finally {
     giteeLoading.value = false;
@@ -526,11 +530,8 @@ const handleExport = async () => {
     });
 
     if (savePath) {
-      console.log('保存路径:', savePath);
-      console.log('数据大小:', jsonStr.length);
       const result = safeWriteFile(savePath, jsonStr);
-      console.log('写入结果:', result);
-      
+
       if (result) {
         ElMessage.success(`数据导出成功！文件保存在：${savePath}`);
       } else {
@@ -539,60 +540,48 @@ const handleExport = async () => {
     }
   } catch (error) {
     console.error('导出失败:', error);
-    ElMessage.error('导出数据失败，请重试');
+    ElMessage.error(`导出数据失败: ${messageOf(error)}`);
   }
 };
 
 // 从文件导入数据
-const handleImport = () => {
+const handleImport = async () => {
   const files = safeOpenDialog({
     title: '选择数据文件',
     properties: ['openFile'],
     filters: [{ name: 'JSON Files', extensions: ['json'] }],
   });
 
-  if (files && files.length > 0) {
-    const filePath = files[0];
-    const fileContent = safeReadFile(filePath);
+  if (!files || files.length === 0) return;
 
-    if (!fileContent) {
-      ElMessage.error('读取文件失败');
-      return;
-    }
+  const filePath = files[0];
+  const fileContent = safeReadFile(filePath);
 
-    try {
-      const exportData: ExportData = JSON.parse(fileContent);
+  if (!fileContent) {
+    ElMessage.error('读取文件失败');
+    return;
+  }
 
-      // 验证数据格式
-      if (!exportData.data || !exportData.version) {
-        ElMessage.error('文件格式不正确');
-        return;
-      }
+  let exportData: ExportData;
+  try {
+    exportData = JSON.parse(fileContent);
+  } catch (error) {
+    ElMessage.error('文件格式不正确，请选择有效的 JSON 文件');
+    return;
+  }
 
-      ElMessageBox.confirm(
-        '导入数据将覆盖当前所有数据，此操作不可撤销，是否继续？',
-        '警告',
-        {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning',
-        },
-      )
-        .then(async () => {
-          try {
-            await importData(exportData);
-            ElMessage.success('数据导入成功！');
-          } catch (error) {
-            console.error('导入失败:', error);
-            ElMessage.error('导入数据失败，请检查文件格式');
-          }
-        })
-        .catch(() => {
-          // 取消操作
-        });
-    } catch (error) {
-      console.error('解析 JSON 失败:', error);
-      ElMessage.error('文件格式不正确，请选择有效的 JSON 文件');
+  if (!exportData.data || !exportData.version) {
+    ElMessage.error('文件格式不正确：缺少 data/version 字段');
+    return;
+  }
+
+  try {
+    await importData(exportData);
+    ElMessage.success('数据导入成功！');
+  } catch (error) {
+    if (!isUserCancel(error)) {
+      console.error('导入失败:', error);
+      ElMessage.error(`导入失败: ${messageOf(error)}`);
     }
   }
 };
@@ -629,11 +618,11 @@ onMounted(() => {
 
 .sync-card {
   margin-bottom: 20px;
-  
+
   :deep(.el-card__header) {
     padding: 16px 20px;
   }
-  
+
   .card-header {
     display: flex;
     justify-content: space-between;
@@ -648,16 +637,16 @@ onMounted(() => {
   p {
     margin: 8px 0;
   }
-  
+
   ol {
     margin: 8px 0;
     padding-left: 20px;
   }
-  
+
   a {
     color: #409eff;
     text-decoration: none;
-    
+
     &:hover {
       text-decoration: underline;
     }

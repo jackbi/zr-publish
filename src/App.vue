@@ -9,49 +9,53 @@
  * Copyright (C) 2025 wenbin. All rights reserved.
 -->
 <template>
-  <div class="app-root">
-    <main class="app-root__content">
-      <router-view></router-view>
-    </main>
-    <nav class="bottom-nav bottom-nav--pill">
-      <div class="bottom-nav__track" :style="{ '--nav-index': activeIndex }">
-        <div class="bottom-nav__indicator"></div>
-        <div
-          v-for="item in navItems"
-          :key="item.name"
-          class="bottom-nav__item"
-          :class="isActive(item.name)"
-          @click="goTo(item.name)"
-          role="button"
-          tabindex="0"
-        >
-          <span>{{ item.label }}</span>
+  <!-- 不再 app.use(ElementPlus)（组件 JS 已按需引入），语言包通过 ConfigProvider 提供 -->
+  <el-config-provider :locale="zhCn">
+    <div class="app-root">
+      <main class="app-root__content">
+        <router-view></router-view>
+      </main>
+      <nav class="bottom-nav bottom-nav--pill">
+        <div class="bottom-nav__track" :style="{ '--nav-index': activeIndex }">
+          <div class="bottom-nav__indicator"></div>
+          <div
+            v-for="item in navItems"
+            :key="item.name"
+            class="bottom-nav__item"
+            :class="isActive(item.name)"
+            @click="goTo(item.name)"
+            role="button"
+            tabindex="0"
+          >
+            <span>{{ item.label }}</span>
+          </div>
+        </div>
+      </nav>
+      <div class="fab-menu" :class="{ 'fab-menu--open': fabOpen }" ref="fabMenuRef">
+        <button class="fab-menu__main" type="button" @click="toggleFab">
+          <el-icon><Operation /></el-icon>
+        </button>
+        <div class="fab-menu__items">
+          <button class="fab-menu__item" type="button" @click="goToDoc" title="使用文档">
+            <el-icon><Document /></el-icon>
+          </button>
+          <button class="fab-menu__item" type="button" @click="goToSettings" title="设置">
+            <el-icon><Setting /></el-icon>
+          </button>
+          <button class="fab-menu__item" type="button" @click="goToDataSync" title="数据同步">
+            <el-icon><Refresh /></el-icon>
+          </button>
         </div>
       </div>
-    </nav>
-    <div class="fab-menu" :class="{ 'fab-menu--open': fabOpen }" ref="fabMenuRef">
-      <button class="fab-menu__main" type="button" @click="toggleFab">
-        <el-icon><Operation /></el-icon>
-      </button>
-      <div class="fab-menu__items">
-        <button class="fab-menu__item" type="button" @click="goToDoc" title="使用文档">
-          <el-icon><Document /></el-icon>
-        </button>
-        <button class="fab-menu__item" type="button" @click="goToSettings" title="设置">
-          <el-icon><Setting /></el-icon>
-        </button>
-        <button class="fab-menu__item" type="button" @click="goToDataSync" title="数据同步">
-          <el-icon><Refresh /></el-icon>
-        </button>
-      </div>
     </div>
-  </div>
+  </el-config-provider>
 </template>
 
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Operation, Setting, Refresh, Document } from '@element-plus/icons-vue';
+import zhCn from 'element-plus/es/locale/lang/zh-cn';
 
 const router = useRouter();
 const route = useRoute();
@@ -104,15 +108,17 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 };
 
-const enterAction = ref({});
+const enterAction = ref<Record<string, unknown>>({});
 onMounted(() => {
   window.utools.onPluginEnter(async (action) => {
     enterAction.value = action;
-    router.push({ name: action.code });
+    // 只跳转已注册的路由，避免 action.code 与路由名不一致时抛未捕获异常
+    const target = router.getRoutes().find((item) => item.name === action.code);
+    if (target) {
+      router.push({ name: action.code });
+    }
   });
-  window.utools.onPluginOut((isKill) => {});
-  window.utools.showNotification('hello test');
-  
+
   // 添加点击外部监听
   document.addEventListener('click', handleClickOutside);
 });

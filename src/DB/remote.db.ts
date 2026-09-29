@@ -31,28 +31,29 @@ export const getRemoteDocSync = () => getDocSync('zr-publish/remote');
 export const getRemoteList: () => Promise<string[]> = () => readList<string>('zr-publish/remote');
 
 /**
- * @description: 删除项目
- * @param {string} id
+ * @description: 删除远程路径
+ * @param {string} str
  * @return {*}
  */
 export const removeRemote = async (str: string) => {
   const list = await getRemoteList();
   const datas = cloneDeep(list);
   const index = datas.findIndex((item) => item === str);
-  if (index === -1) return false;
+  if (index === -1) throw new Error('该远程路径已不存在，请刷新后重试');
   datas.splice(index, 1);
   await writeDbList(remoteDoc, datas);
   return true;
 };
 
 /**
- * @description: 新增项目
- * @param {ProjectItemType} project
+ * @description: 新增远程路径（同名视为重复，直接拒绝）
+ * @param {string} project
  * @return {*}
  */
-export const addRemote: (project: string) => Promise<string | Error> = async (project: string) => {
+export const addRemote: (project: string) => Promise<string> = async (project: string) => {
   const params = cloneDeep(project);
   const list = await getRemoteList();
+  if (list.includes(params)) throw new Error('该远程路径已存在');
   const datas = cloneDeep(list);
   datas.push(params);
   await writeDbList(remoteDoc, datas);
@@ -61,9 +62,10 @@ export const addRemote: (project: string) => Promise<string | Error> = async (pr
 
 export const updateRemote = async (oldValue: string, nextValue: string) => {
   const list = await getRemoteList();
+  const index = list.findIndex((item) => item === oldValue);
+  if (index === -1) throw new Error('该远程路径已不存在，请刷新后重试');
+  if (nextValue !== oldValue && list.includes(nextValue)) throw new Error('该远程路径已存在');
   const datas = cloneDeep(list);
-  const index = datas.findIndex((item) => item === oldValue);
-  if (index === -1) return false;
   datas[index] = nextValue;
   await writeDbList(remoteDoc, datas);
   return true;

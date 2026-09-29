@@ -26,7 +26,11 @@ export const safeIsDir = (filePath: string) => {
 
 export const safePublish = async (params: unknown) => {
   try {
-    const result = getServices()?.publish?.(params);
+    const services = getServices();
+    if (!services?.publish) {
+      return { ok: false, error: new Error('发布服务不可用（preload 未加载）') } as const;
+    }
+    const result = services.publish(params);
     if (result instanceof Promise) {
       await result;
     }
@@ -48,6 +52,9 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number) => {
   }
 };
 
+const isTimeoutError = (error: unknown) =>
+  error instanceof Error && error.message === '发布超时，请重试';
+
 export const safePublishWithRetry = async (
   params: unknown,
   options: { retries?: number; timeoutMs?: number } = {},
@@ -55,10 +62,26 @@ export const safePublishWithRetry = async (
   const { retries = 1, timeoutMs = 120000 } = options;
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const services = getServices();
+    if (!services?.publish) {
+      // 服务不可用时必须报错，不能静默返回成功
+      return { ok: false, error: new Error('发布服务不可用（preload 未加载）') } as const;
+    }
     try {
-      const result = getServices()?.publish?.(params);
+      const result = services.publish(params);
       if (result instanceof Promise) {
-        await withTimeout(result, timeoutMs);
+        try {
+          await withTimeout(result, timeoutMs);
+        } catch (error) {
+          if (isTimeoutError(error)) {
+            // 超时只作用于调用方，底层上传仍在继续，native 侧的 publishBusy 也仍然为 true。
+            // 这里等它真正结束后再释放锁，避免锁死发布功能，同时避免并发发布。
+            Promise.resolve(result)
+              .catch(() => {})
+              .finally(() => getServices()?.resetPublishState?.());
+          }
+          throw error;
+        }
       }
       return { ok: true, attempt } as const;
     } catch (error) {
@@ -109,8 +132,8 @@ export const safeTestConnect = async (params: unknown) => {
     }
     return result || { success: false, message: '连接失败' };
   } catch (error: any) {
-    return { 
-      success: false, 
+    return {
+      success: false,
       message: '连接失败',
       error: error.toString(),
     };

@@ -129,6 +129,8 @@
               type="primary"
               :icon="Refresh"
               size="small"
+              :loading="row.git_loading"
+              :disabled="row.git_loading"
               @click="handleRefreshSingleGit(row)"
               title="刷新 Git 状态"
               style="padding: 4px; margin-left: auto"
@@ -204,8 +206,6 @@ const projectChange = defineAsyncComponent(() => import('@/components/project/ch
 
 interface ProjectItemWithRefreshing extends ProjectItemType {
   refreshing?: boolean;
-  uncommitted_count?: number;
-  last_commit_info?: string;
   git_loading?: boolean;
 }
 
@@ -235,17 +235,20 @@ watch(searchInput, () => {
   triggerSearch();
 });
 
-const getTableData = () => {
-  getProjectList().then((res) => {
+const getTableData = async () => {
+  try {
+    const res = await getProjectList();
     projectData.value = res.map((project) => ({
       ...project,
       project_type: project.project_type || detectProjectType(project.path),
       refreshing: false,
       git_loading: false,
-      uncommitted_count: project.git_info?.uncommitted_count || 0,
-      last_commit_info: project.git_info?.last_commit_info || '',
+      uncommitted_count: project.uncommitted_count || 0,
+      last_commit_info: project.last_commit_info || '',
     }));
-  });
+  } catch (error) {
+    notifyError('加载项目列表失败');
+  }
 };
 
 const refreshAllGit = async () => {
@@ -268,14 +271,15 @@ const refreshAllGit = async () => {
 
   try {
     // Check all projects, not just those with git_info.isGit
-    const promises = projectData.value.map(async (project, index) => {
+    const promises = projectData.value.map(async (project) => {
       try {
         const result = await gitWorkerQueue.addTask(project.path, 'full');
 
-        projectData.value[index].git_info = result.git_info;
-        projectData.value[index].uncommitted_count = result.uncommitted_count;
-        projectData.value[index].last_commit_info = result.last_commit_info;
-        projectData.value[index].git_loading = false;
+        // 直接写在当前行对象上：按 index 回写会在列表被重建时把状态写到别的项目上
+        project.git_info = result.git_info;
+        project.uncommitted_count = result.uncommitted_count;
+        project.last_commit_info = result.last_commit_info;
+        project.git_loading = false;
 
         if (result.git_info.isGit) {
           if (result.git_info.status !== 'error') {
@@ -292,7 +296,7 @@ const refreshAllGit = async () => {
         }
       } catch (error) {
         errorCount++;
-        projectData.value[index].git_loading = false;
+        project.git_loading = false;
       }
     });
 
@@ -323,6 +327,8 @@ const handleRefreshSingleGit = async (project: ProjectItemWithRefreshing) => {
     notifyError('Git 服务不可用');
     return;
   }
+
+  if (project.git_loading) return;
 
   // Find project index
   const index = projectData.value.findIndex((p) => p.id === project.id);
@@ -397,8 +403,6 @@ const getGitStatusText = (gitInfo: GitInfo) => {
   }
 };
 
-getTableData();
-
 const importProject = () => {
   const files = safeOpenDialog({
     title: '选择项目路径',
@@ -431,7 +435,7 @@ const importProject = () => {
         } catch (error) {
           console.error(`Failed to parse package.json for ${element}:`, error);
           params.push({
-            name: element.split('/').pop() || element,
+            name: element.split(/[\\/]/).pop() || element,
             path: element,
             package_name: '',
             version: '',
@@ -442,7 +446,7 @@ const importProject = () => {
       }
     } else {
       params.push({
-        name: element.split('/').pop() || element,
+        name: element.split(/[\\/]/).pop() || element,
         path: element,
         package_name: '',
         version: '',
@@ -463,11 +467,11 @@ const importProject = () => {
 };
 
 const addProjectItem = () => {
-  projectChangeRef.value.init();
+  projectChangeRef.value?.init();
 };
 
 const handleEdit = (row: ProjectItemType) => {
-  projectChangeRef.value.init(row);
+  projectChangeRef.value?.init(row);
 };
 
 const handleCopy = (row: ProjectItemType) => {
@@ -476,9 +480,9 @@ const handleCopy = (row: ProjectItemType) => {
     ...(rest as ProjectItemType),
     id: '',
     name: `${row.name} 副本`,
-  }).then(() => {
-    getTableData();
-  });
+  })
+    .then(() => getTableData())
+    .catch((error) => notifyError(error instanceof Error ? error.message : '复制失败'));
 };
 
 const handleOpenCommand = async (
@@ -514,13 +518,12 @@ const handleOpenCommand = async (
 
 const handleDelete = (row: ProjectItemType) => {
   confirmDelete(`确定要删除项目「${row.name}」吗？`)
-    .then(() => {
-      removeProject(row.id).then(() => {
-        getTableData();
-      });
-    })
-    .catch(() => {
-      // 取消操作
+    .then(() => removeProject(row.id).then(() => getTableData()))
+    .catch((error) => {
+      // 用户取消（'cancel'/'close'）不提示，真实失败给出反馈
+      if (error !== 'cancel' && error !== 'close') {
+        notifyError(error instanceof Error ? error.message : '删除失败');
+      }
     });
 };
 

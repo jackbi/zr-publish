@@ -11,14 +11,7 @@
 export type ProjectType = 'vue' | 'react' | 'node' | 'java' | 'python' | 'go' | 'unknown';
 
 export type GitStatus =
-  | 'up-to-date'
-  | 'ahead'
-  | 'behind'
-  | 'diverged'
-  | 'no-remote'
-  | 'not-git'
-  | 'unknown'
-  | 'error';
+  'up-to-date' | 'ahead' | 'behind' | 'diverged' | 'no-remote' | 'not-git' | 'unknown' | 'error';
 
 export interface GitInfo {
   isGit: boolean;
@@ -41,6 +34,9 @@ export interface ProjectItemType {
   desc?: string;
   project_type?: ProjectType;
   git_info?: GitInfo;
+  /** 以下两个字段由「刷新 Git 状态」写入并随项目一起落库 */
+  uncommitted_count?: number;
+  last_commit_info?: string;
 }
 
 export interface ProjectItemTypeNoId extends Omit<ProjectItemType, 'id'> {

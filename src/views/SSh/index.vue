@@ -118,7 +118,7 @@ import { computed, defineAsyncComponent, ref, watch, reactive } from 'vue';
 import { createDebounce } from '@/utils/timing';
 import { notifyError, notifySuccess, confirmDelete } from '@/utils/feedback';
 import { safeTestConnect } from '@/utils/utools';
-import { decrypt } from '@/utils/CryptoJS';
+import { safeDecrypt } from '@/utils/CryptoJS';
 import { cloneDeep } from 'lodash-es';
 
 const sshChange = defineAsyncComponent(() => import('@/components/ssh/change.vue'));
@@ -153,45 +153,48 @@ watch(searchInput, () => {
   triggerSearch();
 });
 
-const getTableData = () => {
-  getSshList().then((res) => {
+const getTableData = async () => {
+  try {
+    const res = await getSshList();
     sshData.value = res.map((item) => ({
       ...item,
       auth_type: item.auth_type || 'password',
     }));
-  });
+  } catch (error) {
+    notifyError('加载服务器列表失败');
+  }
 };
 
 const addProjectItem = () => {
-  sshChangeRef.value.init();
+  sshChangeRef.value?.init();
 };
 
 const handleEdit = (row: sshItemType) => {
   const params = cloneDeep(row);
   if (params.auth_type === 'password') {
-    params.password = decrypt(params.password);
+    params.password = safeDecrypt(params.password);
   }
   if (params.passphrase) {
-    params.passphrase = decrypt(params.passphrase);
+    params.passphrase = safeDecrypt(params.passphrase);
   }
-  sshChangeRef.value.init(params);
+  sshChangeRef.value?.init(params);
 };
 
 const handleCopy = (row: sshItemType) => {
   const params = cloneDeep(row);
   if (params.auth_type === 'password') {
-    params.password = decrypt(params.password);
+    params.password = safeDecrypt(params.password);
   }
   if (params.passphrase) {
-    params.passphrase = decrypt(params.passphrase);
+    params.passphrase = safeDecrypt(params.passphrase);
   }
   addSsh({
     ...(params as sshItemType),
     id: '',
     name: `${row.name} 副本`,
-  }).then(() => {
-    getTableData();
-  });
+  })
+    .then(() => getTableData())
+    .catch((error) => notifyError(error instanceof Error ? error.message : '复制失败'));
 };
 
 const handleConnect = async (row: sshItemType) => {
@@ -199,10 +202,10 @@ const handleConnect = async (row: sshItemType) => {
   const params = cloneDeep(row);
 
   if (params.auth_type === 'password') {
-    params.password = decrypt(params.password);
+    params.password = safeDecrypt(params.password);
   }
   if (params.passphrase) {
-    params.passphrase = decrypt(params.passphrase);
+    params.passphrase = safeDecrypt(params.passphrase);
   }
 
   try {
@@ -232,20 +235,20 @@ const handleOpenTerminal = async (row: sshItemType) => {
   const params = cloneDeep(row);
 
   if (params.auth_type === 'password') {
-    params.password = decrypt(params.password);
+    params.password = safeDecrypt(params.password);
   }
   if (params.passphrase) {
-    params.passphrase = decrypt(params.passphrase);
+    params.passphrase = safeDecrypt(params.passphrase);
   }
 
   try {
     const settings = await getSettings();
     let terminalType = settings.default_terminal;
-    
+
     if (!terminalType && window.services?.getDefaultTerminal) {
       terminalType = await window.services.getDefaultTerminal();
     }
-    
+
     if (window.services?.openSSHTerminal) {
       const result = window.services.openSSHTerminal(params, terminalType);
       if (result.success) {
@@ -263,12 +266,13 @@ const handleOpenTerminal = async (row: sshItemType) => {
 
 const handleDelete = (row: sshItemType) => {
   confirmDelete(`确定要删除服务器「${row.host}」吗？`)
-    .then(() => {
-      removeSsh(row.id).then(() => {
-        getTableData();
-      });
-    })
-    .catch(() => {});
+    .then(() => removeSsh(row.id).then(() => getTableData()))
+    .catch((error) => {
+      // 用户取消（'cancel'/'close'）不提示，真实失败给出反馈
+      if (error !== 'cancel' && error !== 'close') {
+        notifyError(error instanceof Error ? error.message : '删除失败');
+      }
+    });
 };
 
 getTableData();

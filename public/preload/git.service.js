@@ -1,6 +1,18 @@
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const { existsSync } = require('fs');
 const path = require('path');
+
+// 统一使用 execFile + 参数数组（不经过 shell）。
+// git 允许分支名包含反引号、$()、; 等字符，一旦用模板字符串拼接命令，
+// 打开一个不可信仓库就可能执行任意本地命令。
+const GIT_BASE_OPTIONS = {
+  encoding: 'utf8',
+  maxBuffer: 10 * 1024 * 1024,
+  windowsHide: true,
+};
+
+const runGit = (args, projectPath, options = {}) =>
+  execFileSync('git', args, { ...GIT_BASE_OPTIONS, ...options, cwd: projectPath }).trim();
 
 const isGitRepository = (projectPath) => {
   try {
@@ -26,24 +38,15 @@ const getGitInfo = (projectPath) => {
   }
 
   try {
-    const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-      cwd: projectPath,
-      encoding: 'utf8',
-    }).trim();
+    const currentBranch = runGit(['rev-parse', '--abbrev-ref', 'HEAD'], projectPath);
 
     let remoteName = '';
     let remoteUrl = '';
     try {
-      remoteName = execSync(`git config branch.${currentBranch}.remote`, {
-        cwd: projectPath,
-        encoding: 'utf8',
-      }).trim();
-      
+      remoteName = runGit(['config', `branch.${currentBranch}.remote`], projectPath);
+
       if (remoteName) {
-        remoteUrl = execSync(`git config remote.${remoteName}.url`, {
-          cwd: projectPath,
-          encoding: 'utf8',
-        }).trim();
+        remoteUrl = runGit(['config', `remote.${remoteName}.url`], projectPath);
       }
     } catch (error) {
       remoteName = '';
@@ -56,19 +59,12 @@ const getGitInfo = (projectPath) => {
 
     if (remoteName) {
       try {
-        execSync('git fetch --quiet', {
-          cwd: projectPath,
-          encoding: 'utf8',
-          timeout: 5000,
-        });
+        runGit(['fetch', '--quiet'], projectPath, { timeout: 5000 });
 
-        const revList = execSync(
-          `git rev-list --left-right --count ${currentBranch}...${remoteName}/${currentBranch}`,
-          {
-            cwd: projectPath,
-            encoding: 'utf8',
-          },
-        ).trim();
+        const revList = runGit(
+          ['rev-list', '--left-right', '--count', `${currentBranch}...${remoteName}/${currentBranch}`],
+          projectPath,
+        );
 
         const [aheadCount, behindCount] = revList.split(/\s+/).map(Number);
         ahead = aheadCount || 0;
@@ -92,10 +88,7 @@ const getGitInfo = (projectPath) => {
 
     let hasChanges = false;
     try {
-      const statusOutput = execSync('git status --porcelain', {
-        cwd: projectPath,
-        encoding: 'utf8',
-      }).trim();
+      const statusOutput = runGit(['status', '--porcelain'], projectPath);
       hasChanges = statusOutput.length > 0;
     } catch (error) {
       hasChanges = false;
@@ -136,25 +129,10 @@ const getLastCommitInfo = (projectPath) => {
   }
 
   try {
-    const message = execSync('git log -1 --pretty=%s', {
-      cwd: projectPath,
-      encoding: 'utf8',
-    }).trim();
-
-    const author = execSync('git log -1 --pretty=%an', {
-      cwd: projectPath,
-      encoding: 'utf8',
-    }).trim();
-
-    const date = execSync('git log -1 --pretty=%ar', {
-      cwd: projectPath,
-      encoding: 'utf8',
-    }).trim();
-
-    const hash = execSync('git log -1 --pretty=%h', {
-      cwd: projectPath,
-      encoding: 'utf8',
-    }).trim();
+    const message = runGit(['log', '-1', '--pretty=%s'], projectPath);
+    const author = runGit(['log', '-1', '--pretty=%an'], projectPath);
+    const date = runGit(['log', '-1', '--pretty=%ar'], projectPath);
+    const hash = runGit(['log', '-1', '--pretty=%h'], projectPath);
 
     return {
       message,
@@ -173,10 +151,7 @@ const getUncommittedChanges = (projectPath) => {
   }
 
   try {
-    const statusOutput = execSync('git status --porcelain', {
-      cwd: projectPath,
-      encoding: 'utf8',
-    }).trim();
+    const statusOutput = runGit(['status', '--porcelain'], projectPath);
 
     if (!statusOutput) {
       return { count: 0, files: [] };
@@ -197,107 +172,14 @@ const getUncommittedChanges = (projectPath) => {
   }
 };
 
-const getAllBranches = (projectPath) => {
-  if (!isGitRepository(projectPath)) {
-    return { local: [], remote: [], current: '' };
-  }
-
-  try {
-    const currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-      cwd: projectPath,
-      encoding: 'utf8',
-    }).trim();
-
-    const localBranchesOutput = execSync('git branch', {
-      cwd: projectPath,
-      encoding: 'utf8',
-    }).trim();
-
-    const localBranches = localBranchesOutput
-      .split('\n')
-      .map((line) => line.replace(/^\*?\s+/, '').trim())
-      .filter(Boolean);
-
-    let remoteBranches = [];
-    try {
-      const remoteBranchesOutput = execSync('git branch -r', {
-        cwd: projectPath,
-        encoding: 'utf8',
-      }).trim();
-
-      remoteBranches = remoteBranchesOutput
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => !line.includes('->'))
-        .filter(Boolean);
-    } catch (error) {
-      remoteBranches = [];
-    }
-
-    return {
-      local: localBranches,
-      remote: remoteBranches,
-      current: currentBranch,
-    };
-  } catch (error) {
-    return { local: [], remote: [], current: '' };
-  }
-};
-
-const executeGitCommand = (projectPath, command) => {
-  if (!isGitRepository(projectPath)) {
-    return {
-      success: false,
-      error: 'Not a git repository',
-    };
-  }
-
-  try {
-    const output = execSync(`git ${command}`, {
-      cwd: projectPath,
-      encoding: 'utf8',
-      timeout: 30000,
-    });
-
-    return {
-      success: true,
-      output: output.trim(),
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-      stderr: error.stderr ? error.stderr.toString() : '',
-    };
-  }
-};
-
-const gitPull = (projectPath) => {
-  return executeGitCommand(projectPath, 'pull');
-};
-
-const gitPush = (projectPath) => {
-  return executeGitCommand(projectPath, 'push');
-};
-
-const gitFetch = (projectPath) => {
-  return executeGitCommand(projectPath, 'fetch');
-};
-
-const switchBranch = (projectPath, branchName) => {
-  return executeGitCommand(projectPath, `checkout ${branchName}`);
-};
-
+/*
+ * 只导出渲染端实际使用的能力。
+ * 原来的 getAllBranches / executeGitCommand / gitPull / gitPush / gitFetch / switchBranch
+ * 渲染端从未调用，却等于把「任意 git 命令」暴露给页面，已删除（需要时再按需加回）。
+ */
 module.exports = {
-  isGitRepository,
   getGitInfo,
   refreshGitStatus,
   getLastCommitInfo,
   getUncommittedChanges,
-  getAllBranches,
-  executeGitCommand,
-  gitPull,
-  gitPush,
-  gitFetch,
-  switchBranch,
 };

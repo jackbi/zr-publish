@@ -14,10 +14,10 @@
     v-model="dialogVisible"
     :title="id ? '编辑项目' : '新增项目'"
     width="60%"
-    :before-close="cancel"
+    :before-close="beforeClose"
     draggable
   >
-    <el-form ref="formRef" :model="formData" :rules="formRules" label-width="auto" status-icon>
+    <el-form :ref="setFormRef" :model="formData" :rules="formRules" label-width="auto" status-icon>
       <el-form-item label="项目路径" prop="path">
         <el-input v-model="formData.path" placeholder="请输入项目路径">
           <template #append>
@@ -29,9 +29,9 @@
         <el-input v-model="formData.name" placeholder="请输入项目名称" />
       </el-form-item>
       <el-form-item label="项目类型" v-if="formData.project_type">
-        <el-tag 
+        <el-tag
           :color="getProjectTypeColor(formData.project_type)"
-          style="border: none; color: white;"
+          style="border: none; color: white"
         >
           {{ getProjectTypeLabel(formData.project_type) }}
         </el-tag>
@@ -48,35 +48,48 @@
     </el-form>
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="cancel">取消</el-button>
-        <el-button @click="confirm" type="primary">确定</el-button>
+        <el-button @click="closeDialog">取消</el-button>
+        <el-button @click="confirm" type="primary" :loading="submitting">确定</el-button>
       </div>
     </template>
   </el-dialog>
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref, watch } from 'vue';
+import { reactive, watch } from 'vue';
 import { ProjectItemTypeNoId, ProjectItemType } from '@/types/index.type';
 import { FolderOpened } from '@element-plus/icons-vue';
 import { addProject, updateProject } from '@/DB/index.db';
-import { notifyError, notifySuccess } from '@/utils/feedback';
-import { useDialogForm } from '@/utils/dialog';
+import { notifyError } from '@/utils/feedback';
+import { useEntityDialog } from '@/utils/entity-dialog';
 import { safeOpenDialog, safeReadFile } from '@/utils/utools';
 import { detectProjectType, getProjectTypeLabel, getProjectTypeColor } from '@/utils/project';
 
-const { dialogVisible, id, formData, resetDialog, openDialog } = useDialogForm<ProjectItemTypeNoId>(
-  () => ({
+const emit = defineEmits<{ success: [payload: ProjectItemType] }>();
+
+const {
+  dialogVisible,
+  id,
+  submitting,
+  formData,
+  setFormRef,
+  openDialog,
+  closeDialog,
+  beforeClose,
+  confirm,
+} = useEntityDialog<ProjectItemTypeNoId, ProjectItemType>({
+  createInitial: () => ({
     name: '',
     path: '',
     package_name: '',
     version: '',
     desc: '',
+    project_type: undefined,
   }),
-);
-const emit = defineEmits(['success']);
-
-const formRef = ref();
+  save: (data, currentId) =>
+    currentId ? updateProject({ ...data, id: currentId }) : addProject(data as ProjectItemType),
+  onSuccess: (saved) => emit('success', saved),
+});
 
 const formRules = reactive({
   name: [
@@ -102,62 +115,40 @@ const formRules = reactive({
   // ],
 });
 
-const cancel = () => {
-  resetDialog();
-};
-
 const handleSelectPath = () => {
   const files = safeOpenDialog({
     title: '选择项目路径',
     properties: ['openDirectory'],
   });
-  if (!files) return;
+  // 取消选择时返回空数组，不能用 !files 判断，否则会把已填路径覆盖成 undefined
+  if (!files || files.length === 0) return;
   const _filePath = files[0];
   formData.path = _filePath;
   formData.project_type = detectProjectType(_filePath);
-  
+
   const packageJsonData = safeReadFile(`${_filePath}/package.json`);
   if (packageJsonData) {
     try {
       const data = JSON.parse(packageJsonData);
-      formData.name = data.name;
-      formData.version = data.version;
+      formData.name = data.name || formData.name;
+      formData.version = data.version || formData.version;
     } catch (error) {
       notifyError('读取 package.json 失败');
     }
   }
 };
 
-watch(() => formData.path, (newPath) => {
-  if (newPath && !formData.project_type) {
-    formData.project_type = detectProjectType(newPath);
-  }
-});
-
-const init = (datas: ProjectItemTypeNoId) => {
-  openDialog(datas);
-};
-
-const confirm = () => {
-  formRef.value.validate((valid: boolean) => {
-    if (valid) {
-      let api: () => Promise<ProjectItemType | Error>;
-      if (id.value) {
-        api = () => updateProject({ ...formData, id: id.value });
-      } else {
-        api = () => addProject(formData as ProjectItemType);
-      }
-      api()
-        .then((res) => {
-          emit('success', res);
-          cancel();
-          notifySuccess();
-        })
-        .catch(() => {
-          notifyError();
-        });
+watch(
+  () => formData.path,
+  (newPath) => {
+    if (newPath && !formData.project_type) {
+      formData.project_type = detectProjectType(newPath);
     }
-  });
+  },
+);
+
+const init = (datas?: ProjectItemTypeNoId) => {
+  openDialog(datas);
 };
 
 defineExpose({

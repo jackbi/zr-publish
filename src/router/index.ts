@@ -18,7 +18,7 @@
  * @FilePath: /new-energy-view/src/router/index.ts
  * Copyright (C) 2022 wenbin. All rights reserved.
  */
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router';
 
 // const files: AnyObject = import.meta.globEager('./routers/*.js');
 // /*  */
@@ -108,7 +108,10 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  // uTools 打包后是以本地文件（file://）加载 index.html 的，
+  // history 模式在 file:// 下 pushState 会抛 SecurityError 导致白屏；
+  // hash 模式在 http（开发）与 file://（打包）下都可用。
+  history: createWebHashHistory(),
   routes,
 });
 

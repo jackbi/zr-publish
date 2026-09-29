@@ -30,7 +30,8 @@ export const getTaskDocSync = () => getDocSync('zr-publish/task');
  * @param {*} return
  * @return {*}
  */
-export const getTaskList: () => Promise<TaskItemType[]> = () => readList<TaskItemType>('zr-publish/task');
+export const getTaskList: () => Promise<TaskItemType[]> = () =>
+  readList<TaskItemType>('zr-publish/task');
 
 /**
  * @description: 删除任务
@@ -41,7 +42,7 @@ export const removeTask = async (id: string) => {
   const list = await getTaskList();
   const datas = cloneDeep(list);
   const index = datas.findIndex((item) => item.id === id);
-  if (index === -1) return false;
+  if (index === -1) throw new Error('该任务已不存在，请刷新后重试');
   datas.splice(index, 1);
   await writeDbList(taskDoc, datas);
   return true;
@@ -52,7 +53,7 @@ export const removeTask = async (id: string) => {
  * @param {TaskItemType} task
  * @return {*}
  */
-export const addTask: (task: TaskItemType) => Promise<TaskItemType | Error> = async (
+export const addTask: (task: TaskItemType) => Promise<TaskItemType> = async (
   task: TaskItemType,
 ) => {
   const params = cloneDeep(task);
@@ -69,13 +70,13 @@ export const addTask: (task: TaskItemType) => Promise<TaskItemType | Error> = as
  * @param {TaskItemType} task
  * @return {*}
  */
-export const updateTask: (task: TaskItemType) => Promise<TaskItemType | Error> = async (
+export const updateTask: (task: TaskItemType) => Promise<TaskItemType> = async (
   task: TaskItemType,
 ) => {
   const list = await getTaskList();
   const datas = cloneDeep(list);
   const index = datas.findIndex((item) => item.id === task.id);
-  if (index === -1) return new Error('项目不存在');
+  if (index === -1) throw new Error('该任务已不存在，请刷新后重试');
   datas[index] = task;
   await writeDbList(taskDoc, datas);
   return task;

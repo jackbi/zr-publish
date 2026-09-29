@@ -28,13 +28,13 @@ export const removeTaskGroup = async (id: string) => {
   const list = await getTaskGroupList();
   const datas = cloneDeep(list);
   const index = datas.findIndex((item) => item.id === id);
-  if (index === -1) return false;
+  if (index === -1) throw new Error('该任务组已不存在，请刷新后重试');
   datas.splice(index, 1);
   await writeDbList(taskGroupDoc, datas);
   return true;
 };
 
-export const addTaskGroup: (group: TaskGroupItemType) => Promise<TaskGroupItemType | Error> = async (
+export const addTaskGroup: (group: TaskGroupItemType) => Promise<TaskGroupItemType> = async (
   group: TaskGroupItemType,
 ) => {
   const params = cloneDeep(group);
@@ -46,13 +46,13 @@ export const addTaskGroup: (group: TaskGroupItemType) => Promise<TaskGroupItemTy
   return params;
 };
 
-export const updateTaskGroup: (group: TaskGroupItemType) => Promise<TaskGroupItemType | Error> = async (
+export const updateTaskGroup: (group: TaskGroupItemType) => Promise<TaskGroupItemType> = async (
   group: TaskGroupItemType,
 ) => {
   const list = await getTaskGroupList();
   const datas = cloneDeep(list);
   const index = datas.findIndex((item) => item.id === group.id);
-  if (index === -1) return new Error('任务组不存在');
+  if (index === -1) throw new Error('该任务组已不存在，请刷新后重试');
   datas[index] = group;
   await writeDbList(taskGroupDoc, datas);
   return group;

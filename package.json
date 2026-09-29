@@ -2,12 +2,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "element-plus": "^2.13.1",
     "lodash-es": "^4.17.23",
-    "marked": "^17.0.1",
     "nanoid": "^5.1.6",
     "vue": "^3.5.27",
     "vue-router": "^4.6.4"
@@ -15,13 +17,18 @@
   "devDependencies": {
     "@element-plus/icons-vue": "^2.3.2",
     "@tailwindcss/vite": "^4.1.18",
+    "@types/crypto-js": "^4.2.2",
+    "@types/lodash-es": "^4.17.12",
     "@vitejs/plugin-vue": "^6.0.3",
     "crypto-js": "^4.2.0",
+    "prettier": "^3.9.9",
     "sass": "^1.97.3",
     "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
     "unplugin-auto-import": "^21.0.0",
     "unplugin-vue-components": "^31.0.0",
     "utools-api-types": "^7.5.1",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vue-tsc": "^3.3.11"
   }
 }

@@ -9,18 +9,18 @@
  * Copyright (C) 2025 wenbin. All rights reserved.
  */
 import { createApp } from 'vue';
-import ElementPlus from 'element-plus';
-import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import router from '@/router/index.ts';
+import { recoverPublishState } from '@/services/publish-manager';
+// 已确定：Element Plus 只做「组件 JS 按需」，样式一律使用全量 CSS，不做按需样式。
+// 好处是绝不可能出现样式缺失，新增组件时也无需再补 theme-chalk 样式。
 import 'element-plus/dist/index.css';
 
 import './main.css';
 import '@/assets/index.scss';
 import App from './App.vue';
-createApp(App)
-  .use(ElementPlus, {
-    locale: zhCn,
-    size: 'default',
-  })
-  .use(router)
-  .mount('#app');
+createApp(App).use(router).mount('#app');
+
+// 启动时收拾上一次运行残留的发布状态（不自动续跑，只把中断状态写明）
+recoverPublishState().catch((error) => {
+  console.error('[zr-publish] 恢复发布状态失败:', error);
+});

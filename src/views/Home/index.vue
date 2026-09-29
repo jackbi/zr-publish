@@ -22,8 +22,7 @@
           :prefix-icon="Search"
           @keyup.enter="triggerSearch"
           @clear="triggerSearch"
-        >
-        </el-input>
+        ></el-input>
         <el-select
           class="search-input w-[200px]"
           v-model="selectedGroupId"
@@ -32,7 +31,12 @@
         >
           <el-option label="全部" :value="''" />
           <el-option label="未分组" value="ungrouped" />
-          <el-option v-for="item in taskGroups" :key="item.id" :label="item.name" :value="item.id" />
+          <el-option
+            v-for="item in taskGroups"
+            :key="item.id"
+            :label="item.name"
+            :value="item.id"
+          />
         </el-select>
         <el-button type="primary" @click="addTaskItem">新增任务</el-button>
         <el-button @click="addGroup">新增任务组</el-button>
@@ -83,7 +87,13 @@
                 <div class="task-card__meta">{{ row.desc || '暂无备注' }}</div>
               </div>
               <div class="task-card__actions task-card__actions--icon">
-                <el-button circle class="shrink-0" :icon="Edit" @click="handleEdit(row)" title="编辑" />
+                <el-button
+                  circle
+                  class="shrink-0"
+                  :icon="Edit"
+                  @click="handleEdit(row)"
+                  title="编辑"
+                />
                 <el-button
                   circle
                   class="shrink-0"
@@ -210,7 +220,7 @@ import {
   isTaskQueuedOrRunning,
   setPublishConcurrency,
 } from '@/services/publish-manager';
-import { decrypt } from '@/utils/CryptoJS';
+import { safeDecrypt } from '@/utils/CryptoJS';
 
 const taskChange = defineAsyncComponent(() => import('@/components/task/change.vue'));
 const taskData = ref<TaskItemType[]>([]);
@@ -239,15 +249,6 @@ const groupFormRules = reactive({
     },
   ],
 });
-
-const filterTableData = computed(() =>
-  taskData.value.filter(
-    (data) =>
-      !search.value ||
-      data.name.toLowerCase().includes(search.value.toLowerCase()) ||
-      (data.desc && data.desc.toLowerCase().includes(search.value.toLowerCase())),
-  ),
-);
 
 const groupedTasks = computed<TaskGroupView[]>(() => {
   const groups: TaskGroupView[] = [];
@@ -322,30 +323,32 @@ watch(searchInput, () => {
   triggerSearch();
 });
 
-const getTableData = () => {
-  getTaskList().then((res) => {
-    taskData.value = res;
-  });
-  getTaskGroupList().then((res) => {
-    taskGroups.value = res;
-  });
-  getSshList().then((res) => {
-    sshList.value = res.map((el) => {
-      return {
-        ...el,
-        password: decrypt(el.password),
-      };
-    });
-  });
+const getTableData = async () => {
+  try {
+    const [tasks, groups, sshs] = await Promise.all([
+      getTaskList(),
+      getTaskGroupList(),
+      getSshList(),
+    ]);
+    taskData.value = tasks;
+    taskGroups.value = groups;
+    sshList.value = sshs.map((el) => ({
+      ...el,
+      password: safeDecrypt(el.password),
+      // 私钥 + passphrase 的服务器必须一起解密，否则发布时认证会失败
+      passphrase: safeDecrypt(el.passphrase),
+    }));
+  } catch (error) {
+    notifyError('加载任务数据失败');
+  }
 };
 
 const handlePublish = async (row: TaskItemType) => {
-  taskUpInfo.value = '';
-  isShowDrawer.value = true;
   const servers = row.ssh_ids
     .map((id) => sshList.value.find((el) => el.id === id))
     .filter(Boolean) as sshItemType[];
 
+  // 先校验再打开日志抽屉，避免留下一个空白抽屉
   if (!row.local_path || !row.remote_path) {
     notifyError('请先完善本地路径与目标路径');
     return;
@@ -356,54 +359,75 @@ const handlePublish = async (row: TaskItemType) => {
     return;
   }
 
+  taskUpInfo.value = '';
+  isShowDrawer.value = true;
   taskUpInfo.value += '开始排队发布...\n';
-  await enqueuePublishTask({
-    task: row,
-    servers,
-    onLog: (message) => {
-      taskUpInfo.value += `${message}\n`;
-    },
-  });
+
+  try {
+    await enqueuePublishTask({
+      task: row,
+      servers,
+      onLog: (message) => {
+        taskUpInfo.value += `${message}\n`;
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '入队失败';
+    taskUpInfo.value += `${message}\n`;
+    notifyError(message);
+  }
 };
 
 const handleGroupPublish = async (group: TaskGroupView) => {
   if (!group.totalCount) return;
-  taskUpInfo.value = '';
-  isShowDrawer.value = true;
-  setPublishConcurrency(1);
+
   const publishItems: Array<{ task: TaskItemType; servers: sshItemType[] }> = [];
+  let message = '';
+
   for (const task of group.allTasks) {
     if (!task.local_path || !task.remote_path) {
-      taskUpInfo.value += `任务 ${task.name} 缺少路径，已跳过\n`;
+      message += `任务 ${task.name} 缺少路径，已跳过\n`;
       continue;
     }
     const servers = task.ssh_ids
       .map((id) => sshList.value.find((el) => el.id === id))
       .filter(Boolean) as sshItemType[];
     if (servers.length === 0) {
-      taskUpInfo.value += `任务 ${task.name} 未选择服务器，已跳过\n`;
+      message += `任务 ${task.name} 未选择服务器，已跳过\n`;
       continue;
     }
     const isBusy = await isTaskQueuedOrRunning(task.id);
     if (isBusy) {
-      taskUpInfo.value += `任务 ${task.name} 已在队列/运行中，已跳过\n`;
+      message += `任务 ${task.name} 已在队列/运行中，已跳过\n`;
       continue;
     }
     publishItems.push({ task, servers });
   }
+
   if (!publishItems.length) {
-    taskUpInfo.value += '没有可发布的任务\n';
+    notifyError('没有可发布的任务');
     return;
   }
-  await enqueuePublishTasks(publishItems, {
-    onLog: (message) => {
-      taskUpInfo.value += `${message}\n`;
-    },
-  });
+
+  taskUpInfo.value = message;
+  isShowDrawer.value = true;
+  setPublishConcurrency(1);
+
+  try {
+    await enqueuePublishTasks(publishItems, {
+      onLog: (log) => {
+        taskUpInfo.value += `${log}\n`;
+      },
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : '入队失败';
+    taskUpInfo.value += `${errorMessage}\n`;
+    notifyError(errorMessage);
+  }
 };
 
 const addTaskItem = () => {
-  taskChangeRef.value.init();
+  taskChangeRef.value?.init();
 };
 
 const addGroup = () => {
@@ -428,28 +452,32 @@ const closeGroupDialog = () => {
 const saveGroup = () => {
   groupFormRef.value.validate(async (valid: boolean) => {
     if (!valid) return;
-    if (editingGroupId.value) {
-      await updateTaskGroup({
-        id: editingGroupId.value,
-        name: groupForm.name,
-        desc: groupForm.desc,
-      });
-      notifySuccess('任务组已更新');
-    } else {
-      await addTaskGroup({
-        id: '',
-        name: groupForm.name,
-        desc: groupForm.desc,
-      });
-      notifySuccess('任务组已创建');
+    try {
+      if (editingGroupId.value) {
+        await updateTaskGroup({
+          id: editingGroupId.value,
+          name: groupForm.name,
+          desc: groupForm.desc,
+        });
+        notifySuccess('任务组已更新');
+      } else {
+        await addTaskGroup({
+          id: '',
+          name: groupForm.name,
+          desc: groupForm.desc,
+        });
+        notifySuccess('任务组已创建');
+      }
+      closeGroupDialog();
+      getTableData();
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : '保存任务组失败');
     }
-    closeGroupDialog();
-    getTableData();
   });
 };
 
 const handleEdit = (row: TaskItemType) => {
-  taskChangeRef.value.init(row);
+  taskChangeRef.value?.init(row);
 };
 
 const handleCopy = (row: TaskItemType) => {
@@ -458,9 +486,9 @@ const handleCopy = (row: TaskItemType) => {
     ...(rest as TaskItemType),
     id: '',
     name: `${row.name} 副本`,
-  }).then(() => {
-    getTableData();
-  });
+  })
+    .then(() => getTableData())
+    .catch((error) => notifyError(error instanceof Error ? error.message : '复制失败'));
 };
 
 const handleGroupEdit = (group: TaskGroupView) => {
@@ -477,28 +505,39 @@ const handleGroupDelete = (group: TaskGroupView) => {
     notifyError('任务组下存在任务，无法删除');
     return;
   }
-  confirmDelete(`确定要删除任务组「${group.name}」吗？`).then(async () => {
-    await removeTaskGroup(group.id);
-    notifySuccess('任务组已删除');
-    getTableData();
-  });
+  confirmDelete(`确定要删除任务组「${group.name}」吗？`)
+    .then(() => removeTaskGroup(group.id))
+    .then(() => {
+      notifySuccess('任务组已删除');
+      getTableData();
+    })
+    .catch((error) => {
+      if (error !== 'cancel' && error !== 'close') {
+        notifyError(error instanceof Error ? error.message : '删除任务组失败');
+      }
+    });
 };
 
 const handleDelete = (row: TaskItemType) => {
   confirmDelete(`确定要删除任务「${row.name}」吗？`)
-    .then(() => {
-      removeTask(row.id).then(() => {
-        getTableData();
-      });
-    })
-    .catch(() => {
-      // 取消操作
+    .then(() => removeTask(row.id).then(() => getTableData()))
+    .catch((error) => {
+      // 用户取消（'cancel'/'close'）不提示，真实失败给出反馈
+      if (error !== 'cancel' && error !== 'close') {
+        notifyError(error instanceof Error ? error.message : '删除失败');
+      }
     });
 };
 
+/**
+ * 兼容历史数据：把 group_id 为空字符串/undefined 的任务上的该字段真正删掉
+ * （原实现判断反了，导致每次进入首页都会重写一遍任务表）
+ */
 const normalizeTaskGroups = async () => {
   const list = await getTaskList();
-  const needsUpdate = list.some((item) => Object.prototype.hasOwnProperty.call(item, 'group_id'));
+  const needsUpdate = list.some(
+    (item) => Object.prototype.hasOwnProperty.call(item, 'group_id') && !item.group_id,
+  );
   if (!needsUpdate) return;
   const updated = list.map((item) => {
     if (!item.group_id) {
@@ -510,8 +549,11 @@ const normalizeTaskGroups = async () => {
   await saveTaskList(updated);
 };
 
-normalizeTaskGroups().then(() => {
-  getTableData();
-});
+// 初始化失败也要把列表渲染出来，否则首页会一直空白
+normalizeTaskGroups()
+  .catch(() => {})
+  .finally(() => {
+    getTableData();
+  });
 </script>
 <style lang="scss" scoped></style>

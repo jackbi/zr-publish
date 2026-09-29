@@ -1,4 +1,11 @@
-import { enqueuePublish, dequeuePublish, upsertPublishStatus, getPublishState } from '@/DB/publish-state.db';
+import {
+  enqueuePublish,
+  dequeuePublish,
+  upsertPublishStatus,
+  getPublishState,
+  savePublishState,
+} from '@/DB/publish-state.db';
+import { getTaskList } from '@/DB/task.db';
 import type { PublishQueueItem, PublishStatusSummary } from '@/types/publish.type';
 import type { TaskItemType, sshItemType } from '@/types/index.type';
 import { safePublishWithRetry } from '@/utils/utools';
@@ -124,7 +131,10 @@ const startWorkers = async () => {
   }
 };
 
-const queueCache = new Map<string, { task: TaskItemType; servers: sshItemType[]; onLog?: (message: string) => void }>();
+const queueCache = new Map<
+  string,
+  { task: TaskItemType; servers: sshItemType[]; onLog?: (message: string) => void }
+>();
 
 export const setPublishConcurrency = (count: number) => {
   maxConcurrency = Math.max(1, count);
@@ -179,4 +189,69 @@ export const enqueuePublishTasks = async (
 
 export const getPublishStateSummary = async () => {
   return getPublishState();
+};
+
+/** 插件重启后残留发布的状态收尾文案 */
+const INTERRUPTED_MESSAGE = '插件重启导致上一次发布中断，请重新发布';
+
+/**
+ * 启动时调用：收拾上一次运行留下的发布状态。
+ * - 队列里残留的任务不会自动续跑（重启后自动往服务器推代码太危险），只把状态收尾成「已中断」；
+ * - running/queued 在重启后不可能仍在运行，同样收尾；
+ * - 顺手清掉已删除任务的历史状态，避免 byTask 越积越多。
+ */
+export const recoverPublishState = async () => {
+  // 进程内计数在重启后必然失真，先复位
+  activeCount = 0;
+  isDraining = false;
+  queueCache.clear();
+
+  const state = await getPublishState();
+  let changed = false;
+
+  for (const item of state.queue) {
+    state.byTask[item.taskId] = {
+      taskId: item.taskId,
+      runId: item.runId,
+      status: 'failed',
+      enqueuedAt: item.enqueuedAt,
+      finishedAt: now(),
+      errorMessage: INTERRUPTED_MESSAGE,
+    };
+    changed = true;
+  }
+  if (state.queue.length) {
+    state.queue = [];
+  }
+
+  for (const [taskId, summary] of Object.entries(state.byTask)) {
+    if (summary.status === 'running' || summary.status === 'queued') {
+      state.byTask[taskId] = {
+        ...summary,
+        status: 'failed',
+        finishedAt: now(),
+        errorMessage: INTERRUPTED_MESSAGE,
+      };
+      changed = true;
+    }
+  }
+
+  try {
+    const tasks = await getTaskList();
+    const aliveTaskIds = new Set(tasks.map((task) => task.id));
+    for (const taskId of Object.keys(state.byTask)) {
+      if (!aliveTaskIds.has(taskId)) {
+        delete state.byTask[taskId];
+        changed = true;
+      }
+    }
+  } catch (error) {
+    // 任务列表读不出来时不要动历史状态
+  }
+
+  if (changed) {
+    await savePublishState(state);
+  }
+
+  return state;
 };

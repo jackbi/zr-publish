@@ -1,11 +1,30 @@
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { promisify } = require('util');
+const fs = require('fs');
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+// 这些常量原本是通过 `exec('where xxx')` / `test -d "..."` 探测的，
+// 既不必要地经过 shell，也把探测结果和引号处理耦合在一起，这里直接查文件系统/PATH。
+const hasCommand = async (command) => {
+  try {
+    await execFileAsync(process.platform === 'win32' ? 'where' : 'which', [command]);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const existsDirectory = (target) => {
+  try {
+    return !!target && fs.existsSync(target) && fs.statSync(target).isDirectory();
+  } catch {
+    return false;
+  }
+};
 
 const detectAvailableTerminals = async () => {
   const platform = process.platform;
-  const terminals = [];
 
   if (platform === 'darwin') {
     const macTerminals = [
@@ -15,17 +34,13 @@ const detectAvailableTerminals = async () => {
       { type: 'Warp', name: 'Warp', command: 'Warp', path: '/Applications/Warp.app' },
     ];
 
-    for (const terminal of macTerminals) {
-      try {
-        const { stdout } = await execAsync(`test -d "${terminal.path}" && echo "exists"`);
-        if (stdout.trim() === 'exists') {
-          terminals.push({ ...terminal, available: true });
-        }
-      } catch {
-        terminals.push({ ...terminal, available: false });
-      }
-    }
-  } else if (platform === 'win32') {
+    return macTerminals.map((terminal) => ({
+      ...terminal,
+      available: fs.existsSync(terminal.path),
+    }));
+  }
+
+  if (platform === 'win32') {
     const winTerminals = [
       { type: 'Tabby', name: 'Tabby', command: 'tabby.exe' },
       { type: 'WindowsTerminal', name: 'Windows Terminal', command: 'wt.exe' },
@@ -33,64 +48,41 @@ const detectAvailableTerminals = async () => {
       { type: 'cmd', name: 'Command Prompt', command: 'cmd.exe' },
     ];
 
+    const results = [];
     for (const terminal of winTerminals) {
-      try {
-        await execAsync(`where ${terminal.command}`);
-        terminals.push({ ...terminal, available: true });
-      } catch {
-        terminals.push({ ...terminal, available: false });
-      }
+      results.push({ ...terminal, available: await hasCommand(terminal.command) });
     }
-  } else {
-    const linuxTerminals = [
-      { type: 'Tabby', name: 'Tabby', command: 'tabby' },
-      { type: 'gnome-terminal', name: 'GNOME Terminal', command: 'gnome-terminal' },
-      { type: 'konsole', name: 'Konsole', command: 'konsole' },
-      { type: 'xterm', name: 'XTerm', command: 'xterm' },
-    ];
-
-    for (const terminal of linuxTerminals) {
-      try {
-        await execAsync(`which ${terminal.command}`);
-        terminals.push({ ...terminal, available: true });
-      } catch {
-        terminals.push({ ...terminal, available: false });
-      }
-    }
+    return results;
   }
 
-  return terminals;
+  const linuxTerminals = [
+    { type: 'Tabby', name: 'Tabby', command: 'tabby' },
+    { type: 'gnome-terminal', name: 'GNOME Terminal', command: 'gnome-terminal' },
+    { type: 'konsole', name: 'Konsole', command: 'konsole' },
+    { type: 'xterm', name: 'XTerm', command: 'xterm' },
+  ];
+
+  const results = [];
+  for (const terminal of linuxTerminals) {
+    results.push({ ...terminal, available: await hasCommand(terminal.command) });
+  }
+  return results;
 };
 
 const getDefaultTerminal = async () => {
   const platform = process.platform;
-  
-  // 优先检测 Tabby
-  try {
-    if (platform === 'darwin') {
-      const { stdout } = await execAsync('test -d "/Applications/Tabby.app" && echo "exists"');
-      if (stdout.trim() === 'exists') {
-        return 'Tabby';
-      }
-    } else if (platform === 'win32') {
-      await execAsync('where tabby.exe');
-      return 'Tabby';
-    } else {
-      await execAsync('which tabby');
-      return 'Tabby';
-    }
-  } catch {
-    // Tabby 不可用，使用平台默认终端
-  }
-  
-  // 使用平台默认终端
+
+  // 优先 Tabby
   if (platform === 'darwin') {
+    if (existsDirectory('/Applications/Tabby.app')) return 'Tabby';
     return 'Terminal';
-  } else if (platform === 'win32') {
-    return 'cmd';
-  } else {
-    return 'gnome-terminal';
   }
+
+  if (platform === 'win32') {
+    return (await hasCommand('tabby.exe')) ? 'Tabby' : 'cmd';
+  }
+
+  return (await hasCommand('tabby')) ? 'Tabby' : 'gnome-terminal';
 };
 
 module.exports = {
