@@ -661,6 +661,73 @@
             <div>
               <div class="doc-changelog">
                 <div class="doc-changelog__item">
+                  <div class="doc-changelog__version">v2.1.0</div>
+                  <div class="doc-changelog__date">2026-09-29</div>
+                  <div class="doc-changelog__content">
+                    <p>
+                      <strong>
+                        本次以「安全修复 + 数据正确性」为主，本地数据无需迁移，覆盖安装即可。
+                      </strong>
+                    </p>
+
+                    <p><strong>安全修复：</strong></p>
+                    <ul>
+                      <li>
+                        git 分支名命令注入（打开任意第三方仓库即可执行本地命令）——
+                        全部改为参数数组调用，不经过 shell
+                      </li>
+                      <li>
+                        远端路径未校验未转义（目标路径填
+                        <code>/</code>
+                        会删除远端根目录）—— 强制绝对路径、非根目录，远端参数统一单引号转义
+                      </li>
+                      <li>单文件上传失败时仍上报「上传成功」—— 异常改为上抛，不再有假成功</li>
+                      <li>
+                        私钥口令被静默清空（编辑一次即丢失，带口令的服务器永远连不上）——
+                        与密码成对加密，并兼容历史明文数据
+                      </li>
+                      <li>打开项目 / 终端时的本地 shell 注入 —— 改为 argv 传参</li>
+                      <li>
+                        发布超时后原生锁不释放，导致后续发布全部失败 —— 超时等底层结束再释放锁
+                      </li>
+                      <li>导出的备份文件不再包含明文口令（格式 1.1，旧版明文备份仍可导入）</li>
+                    </ul>
+
+                    <p><strong>问题修复：</strong></p>
+                    <ul>
+                      <li>远程路径 / 指令「编辑」实际执行「新增」，编辑一次就多一条重复记录</li>
+                      <li>删除、复制、保存失败不再静默；备份导入失败会整体回滚</li>
+                      <li>插件重启后残留的发布队列统一收尾为「已中断」，不会自动续跑</li>
+                      <li>私钥认证的服务器可正确列出远程目录；任务弹窗不再残留上一个任务的数据</li>
+                      <li>首页不再每次进入都重写任务表；项目页 Git 状态不再可能写到别的项目上</li>
+                    </ul>
+
+                    <p><strong>新功能：</strong></p>
+                    <ul>
+                      <li>任务管理支持按任务组折叠 / 展开，工具栏提供「全部折叠 / 全部展开」</li>
+                      <li>折叠状态自动记住；搜索时自动展开有命中的分组</li>
+                    </ul>
+
+                    <p><strong>界面调整：</strong></p>
+                    <ul>
+                      <li>重做配色与排版体系，主色对比度由 2.9:1 提升到 5.17:1（达到 WCAG AA）</li>
+                      <li>表格信息密度提高；命令、路径、IP、分支、版本号等数据改用等宽字体</li>
+                      <li>
+                        修复表格最后两行操作按钮点不动（右下角悬浮菜单的不可见区域拦截了点击）
+                      </li>
+                    </ul>
+
+                    <p><strong>其他改进：</strong></p>
+                    <ul>
+                      <li>Element Plus 组件按需引入，打包体积减少约 44%</li>
+                      <li>路由改为 hash 模式，消除以 file:// 加载时白屏的风险</li>
+                      <li>指令管理与远程路径管理合并为一套页面，弹窗统一提交逻辑</li>
+                      <li>接入类型检查（vue-tsc，0 error）与格式化脚本</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="doc-changelog__item">
                   <div class="doc-changelog__version">v2.0.0</div>
                   <div class="doc-changelog__date">2025-02-14</div>
                   <div class="doc-changelog__content">
