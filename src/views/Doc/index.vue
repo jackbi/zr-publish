@@ -23,7 +23,8 @@
             <div>
               <p>
                 ZR-Publish 是一个用于将文件部署到远程服务器的 Utools 插件，主要用于没有搭建
-                Jenkins、CI/CD 服务的代码发布场景。
+                Jenkins、CI/CD 服务的代码发布场景。项目基于 MIT
+                协议开源，源码与问题反馈见文末「反馈与支持」。
               </p>
               <div class="doc-features">
                 <div class="doc-feature">
@@ -743,11 +744,20 @@
           <section class="doc-section">
             <h2>反馈与支持</h2>
             <div>
-              <p>如有问题或建议，欢迎反馈：</p>
+              <p>本项目基于 MIT 协议开源，源码、更新记录与问题反馈都在 GitHub：</p>
               <ul>
-                <li>通过 Utools 插件中心反馈</li>
-                <li>联系开发者：wenbin</li>
+                <li>
+                  <a href="#" @click.prevent="openExternal(REPO_URL)">
+                    {{ REPO_URL }}
+                  </a>
+                </li>
+                <li>
+                  <a href="#" @click.prevent="openExternal(`${REPO_URL}/issues`)">
+                    提交 Issue / 查看已知问题
+                  </a>
+                </li>
               </ul>
+              <p>也可以直接通过 Utools 插件中心反馈，或联系开发者：wenbin</p>
               <div class="doc-note doc-note--success">
                 <strong>感谢使用 ZR-Publish！</strong>
               </div>
@@ -762,6 +772,14 @@
 <script lang="ts" setup>
 import { Files, FolderOpened, Lightning, Promotion, Refresh } from '@element-plus/icons-vue';
 import { changelogEntries, renderInline } from '@/utils/changelog';
+import { safeShellOpenExternal } from '@/utils/utools';
+
+/** 开源仓库（MIT）。插件内多处展示，集中在此维护 */
+const REPO_URL = 'https://github.com/jackbi/zr-publish';
+
+const openExternal = (url: string) => {
+  safeShellOpenExternal(url);
+};
 import projectListImg from '@/assets/docs/project-list.png';
 import taskListImg from '@/assets/docs/task-list.png';
 import dataSyncImg from '@/assets/docs/data-sync.png';
