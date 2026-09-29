@@ -19,6 +19,7 @@ dist-ssr
 .codegraph
 .pnpm-store
 .tmp-verify
+.market-shots
 .agents
 .DS_Store
 *.suo
