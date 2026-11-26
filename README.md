@@ -130,12 +130,13 @@ pnpm dev     # 启动 Vite 开发服务器，默认 http://localhost:3020
 
 ### 常用脚本
 
-| 命令                                | 说明                               |
-| ----------------------------------- | ---------------------------------- |
-| `pnpm dev`                          | 启动开发服务器                     |
-| `pnpm build`                        | 构建到 `dist/`（打包用）           |
-| `pnpm typecheck`                    | `vue-tsc` 类型检查（当前 0 error） |
-| `pnpm format` / `pnpm format:check` | Prettier 格式化 / 校验             |
+| 命令                                | 说明                                   |
+| ----------------------------------- | -------------------------------------- |
+| `pnpm dev`                          | 启动开发服务器                         |
+| `pnpm build`                        | 构建到 `dist/`（打包用）               |
+| `pnpm typecheck`                    | `vue-tsc` 类型检查（当前 0 error）     |
+| `pnpm format` / `pnpm format:check` | Prettier 格式化 / 校验                 |
+| `pnpm release:notes`                | 从 `CHANGELOG.md` 生成某版本的发布说明 |
 
 ### 目录结构
 
@@ -160,15 +161,44 @@ pnpm dev     # 启动 Vite 开发服务器，默认 http://localhost:3020
 
 ## 打包与发布
 
+### 打包离线包
+
 1. `pnpm build` 生成 `dist/`；
 2. 打开 **uTools 开发者工具 → 打包**，目录选择 `dist/`，填写版本号，保存得到 `.upxs`；
-3. 可将离线包放入 `package/` 目录留档。
+3. 离线包不入库（`package/*.upxs` 已在 `.gitignore` 中忽略），随 Release 附件分发。
 
 注意事项：
 
 - **平台原生模块**：preload 依赖 `node-ssh` → `ssh2` 的原生模块，分平台编译。请在目标平台重新 `npm install` 后再打包，否则装到其他平台可能出现 SSH 连不上。
 - 打包与发布需要**分别填写版本号**，两者并不关联，版本号遵循 semver 规范。
 - 版本记录只维护 `CHANGELOG.md` 一处 —— 插件内「使用文档 → 版本历史」会在构建时读取它并渲染，不需要另外维护文档页。
+- `.upxs` 是加密格式，只能由 uTools 开发者工具产出，命令行生成不了。
+
+### 发布新版本
+
+以 `2.1.0` 为例，tag 名与 `CHANGELOG.md` 里的版本号保持一致：
+
+```bash
+# 1. 质量门槛
+pnpm typecheck && pnpm build && pnpm format:check
+
+# 2. 打 tag 并推送（origin 换成你的远端名；有多个远端时分别推送）
+git tag -a v2.1.0 -m "ZR-Publish 2.1.0"
+git push origin main --follow-tags
+
+# 3. 从 CHANGELOG 生成发布说明，不要另写一份
+pnpm release:notes 2.1.0 > /tmp/zr-publish-notes.md
+
+# 4. 创建 Release，离线包作为附件
+gh release create v2.1.0 --repo jackbi/zr-publish \
+  --title "ZR-Publish v2.1.0" \
+  --notes-file /tmp/zr-publish-notes.md \
+  package/zr-publish-2.1.0.upxs
+```
+
+- 发布说明由 `pnpm release:notes [版本]` 从 `CHANGELOG.md` 提取，参数可写 `2.1.0` 或 `v2.1.0`，省略则取最新版本。
+- 已发布后需要替换附件：`gh release upload v2.1.0 package/zr-publish-2.1.0.upxs --clobber`。
+- GitHub Release 与应用市场是两条独立通道，版本号需要手动保持一致。
 
 ## 数据与备份
 
