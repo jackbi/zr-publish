@@ -23,6 +23,9 @@ dist-ssr
 
 # 离线安装包改走 GitHub Release 附件，不再入库
 package/*.upxs
+
+# 本机会话交接记录
+.dsh-handoff.md
 .agents
 .DS_Store
 *.suo
